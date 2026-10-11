@@ -1,0 +1,38 @@
+spring:
+  config:
+    import: optional:file:./deploy/.env[.properties]
+  application:
+    name: gateway-service
+  cloud:
+    nacos:
+      discovery:
+        enabled: ${NACOS_DISCOVERY_ENABLED:false}
+        server-addr: ${NACOS_SERVER_ADDR:127.0.0.1:8848}
+        namespace: ${NACOS_NAMESPACE:}
+
+campus-reserve:
+  gateway:
+    reservation-uri: ${RESERVATION_SERVICE_URI:lb://reservation-service}
+    identity-uri: ${IDENTITY_SERVICE_URI:lb://identity-service}
+    notification-uri: ${NOTIFICATION_SERVICE_URI:lb://notification-service}
+  security:
+    jwt:
+      hmac-base64-secret: ${CAMPUS_JWT_HMAC_SECRET:}
+      issuer: ${CAMPUS_JWT_ISSUER:campus-reserve}
+
+server:
+  port: ${SERVER_PORT:8200}
+
+management:
+  endpoint:
+    health:
+      probes:
+        enabled: true
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+logging:
+  pattern:
+    level: "%5p [requestId:%X{requestId:-}]"

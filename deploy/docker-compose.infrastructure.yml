@@ -1,0 +1,60 @@
+services:
+  mysql:
+    image: mysql:8.4
+    container_name: campus-reserve-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?set-in-local-env}
+      MYSQL_DATABASE: campus_reserve
+      MYSQL_USER: campus_app
+      MYSQL_PASSWORD: ${MYSQL_APP_PASSWORD:?set-in-local-env}
+    command: --default-time-zone=+08:00
+    ports:
+      - "3306:3306"
+    volumes:
+      - campus-reserve-mysql:/var/lib/mysql
+      - ./mysql/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-p$${MYSQL_ROOT_PASSWORD}"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  rabbitmq:
+    image: rabbitmq:4-management
+    container_name: campus-reserve-rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: campus_app
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_APP_PASSWORD:?set-in-local-env}
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    volumes:
+      - campus-reserve-rabbitmq:/var/lib/rabbitmq
+
+  redis:
+    image: redis:7.4-alpine
+    container_name: campus-reserve-redis
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:?set-in-local-env}
+    ports:
+      - "6379:6379"
+    volumes:
+      - campus-reserve-redis:/data
+
+  nacos:
+    image: nacos/nacos-server:v3.0.0
+    container_name: campus-reserve-nacos
+    environment:
+      MODE: standalone
+      NACOS_AUTH_ENABLE: "false"
+    ports:
+      - "8848:8848"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8848/nacos/actuator/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+
+volumes:
+  campus-reserve-mysql:
+  campus-reserve-rabbitmq:
+  campus-reserve-redis:

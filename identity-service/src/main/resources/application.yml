@@ -1,0 +1,48 @@
+spring:
+  config:
+    import: optional:file:./deploy/.env[.properties]
+  application:
+    name: identity-service
+  datasource:
+    url: ${IDENTITY_DB_URL:jdbc:mysql://127.0.0.1:3306/campus_identity?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai}
+    username: ${IDENTITY_DB_USERNAME:campus_identity_app}
+    password: ${IDENTITY_DB_PASSWORD:}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+  cloud:
+    nacos:
+      discovery:
+        enabled: ${NACOS_DISCOVERY_ENABLED:false}
+        server-addr: ${NACOS_SERVER_ADDR:127.0.0.1:8848}
+        namespace: ${NACOS_NAMESPACE:}
+
+campus-reserve:
+  security:
+    jwt:
+      hmac-base64-secret: ${CAMPUS_JWT_HMAC_SECRET:}
+      issuer: ${CAMPUS_JWT_ISSUER:campus-reserve}
+      access-token-ttl-seconds: ${JWT_ACCESS_TOKEN_TTL_SECONDS:3600}
+  bootstrap:
+    admin:
+      username: ${CAMPUS_BOOTSTRAP_ADMIN_USERNAME:}
+      password: ${CAMPUS_BOOTSTRAP_ADMIN_PASSWORD:}
+      display-name: ${CAMPUS_BOOTSTRAP_ADMIN_DISPLAY_NAME:}
+
+server:
+  port: ${SERVER_PORT:8201}
+
+management:
+  endpoint:
+    health:
+      probes:
+        enabled: true
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+logging:
+  pattern:
+    level: "%5p [requestId:%X{requestId:-}]"

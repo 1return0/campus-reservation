@@ -1,0 +1,20 @@
+CREATE TABLE reservation_outbox_event (
+    id BIGINT NOT NULL,
+    event_id CHAR(36) NOT NULL,
+    aggregate_type VARCHAR(64) NOT NULL,
+    aggregate_id BIGINT NOT NULL,
+    event_type VARCHAR(64) NOT NULL,
+    payload JSON NOT NULL,
+    publish_status VARCHAR(24) NOT NULL,
+    publish_attempts INT NOT NULL DEFAULT 0,
+    lease_token CHAR(36) NULL,
+    lease_expires_at DATETIME(3) NULL,
+    published_at DATETIME(3) NULL,
+    last_error VARCHAR(512) NULL,
+    created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    updated_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_reservation_outbox_event_id (event_id),
+    KEY ix_reservation_outbox_delivery (publish_status, lease_expires_at, created_at, id),
+    CONSTRAINT ck_reservation_outbox_status CHECK (publish_status IN ('PENDING', 'LEASED', 'PUBLISHED'))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;

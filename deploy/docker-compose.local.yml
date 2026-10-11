@@ -1,0 +1,135 @@
+services:
+  mysql:
+    extends:
+      file: docker-compose.infrastructure.yml
+      service: mysql
+
+  rabbitmq:
+    extends:
+      file: docker-compose.infrastructure.yml
+      service: rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  redis:
+    extends:
+      file: docker-compose.infrastructure.yml
+      service: redis
+
+  nacos:
+    extends:
+      file: docker-compose.infrastructure.yml
+      service: nacos
+
+  identity-service:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+      args:
+        MODULE: identity-service
+    environment:
+      SERVER_PORT: 8201
+      NACOS_DISCOVERY_ENABLED: "true"
+      NACOS_SERVER_ADDR: nacos:8848
+      IDENTITY_DB_URL: jdbc:mysql://mysql:3306/campus_identity?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai
+      IDENTITY_DB_USERNAME: campus_app
+      IDENTITY_DB_PASSWORD: ${MYSQL_APP_PASSWORD:?set-in-local-env}
+      CAMPUS_JWT_HMAC_SECRET: ${CAMPUS_JWT_HMAC_SECRET:?set-in-local-env}
+      CAMPUS_BOOTSTRAP_ADMIN_USERNAME: ${CAMPUS_BOOTSTRAP_ADMIN_USERNAME:?set-in-local-env}
+      CAMPUS_BOOTSTRAP_ADMIN_PASSWORD: ${CAMPUS_BOOTSTRAP_ADMIN_PASSWORD:?set-in-local-env}
+      CAMPUS_BOOTSTRAP_ADMIN_DISPLAY_NAME: ${CAMPUS_BOOTSTRAP_ADMIN_DISPLAY_NAME:?set-in-local-env}
+    depends_on:
+      mysql:
+        condition: service_healthy
+      nacos:
+        condition: service_healthy
+
+  reservation-service:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+      args:
+        MODULE: reservation-service
+    environment:
+      SERVER_PORT: 8202
+      NACOS_DISCOVERY_ENABLED: "true"
+      NACOS_SERVER_ADDR: nacos:8848
+      CAMPUS_RESERVE_DB_URL: jdbc:mysql://mysql:3306/campus_reserve?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai
+      CAMPUS_RESERVE_DB_USERNAME: campus_app
+      CAMPUS_RESERVE_DB_PASSWORD: ${MYSQL_APP_PASSWORD:?set-in-local-env}
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      RABBITMQ_VIRTUAL_HOST: /
+      RABBITMQ_USERNAME: campus_app
+      RABBITMQ_PASSWORD: ${RABBITMQ_APP_PASSWORD:?set-in-local-env}
+      CAMPUS_JWT_HMAC_SECRET: ${CAMPUS_JWT_HMAC_SECRET:?set-in-local-env}
+      OUTBOX_DELIVERY_ENABLED: "true"
+      RESERVATION_REDIS_ENABLED: "true"
+      RESERVATION_REDIS_HOST: redis
+      RESERVATION_REDIS_PASSWORD: ${REDIS_PASSWORD:?set-in-local-env}
+    depends_on:
+      mysql:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      nacos:
+        condition: service_healthy
+
+  notification-service:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+      args:
+        MODULE: notification-service
+    environment:
+      SERVER_PORT: 8203
+      NACOS_DISCOVERY_ENABLED: "true"
+      NACOS_SERVER_ADDR: nacos:8848
+      NOTIFICATION_DB_URL: jdbc:mysql://mysql:3306/campus_notification?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai
+      NOTIFICATION_DB_USERNAME: campus_app
+      NOTIFICATION_DB_PASSWORD: ${MYSQL_APP_PASSWORD:?set-in-local-env}
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      RABBITMQ_VIRTUAL_HOST: /
+      RABBITMQ_USERNAME: campus_app
+      RABBITMQ_PASSWORD: ${RABBITMQ_APP_PASSWORD:?set-in-local-env}
+      CAMPUS_JWT_HMAC_SECRET: ${CAMPUS_JWT_HMAC_SECRET:?set-in-local-env}
+      RESERVATION_EVENT_CONSUMER_ENABLED: "true"
+    depends_on:
+      mysql:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      nacos:
+        condition: service_healthy
+
+  gateway-service:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+      args:
+        MODULE: gateway-service
+    environment:
+      SERVER_PORT: 8200
+      NACOS_DISCOVERY_ENABLED: "true"
+      NACOS_SERVER_ADDR: nacos:8848
+      CAMPUS_JWT_HMAC_SECRET: ${CAMPUS_JWT_HMAC_SECRET:?set-in-local-env}
+    ports:
+      - "8200:8200"
+    depends_on:
+      nacos:
+        condition: service_healthy
+      identity-service:
+        condition: service_started
+      reservation-service:
+        condition: service_started
+      notification-service:
+        condition: service_started
+
+volumes:
+  campus-reserve-mysql:
+  campus-reserve-rabbitmq:
+  campus-reserve-redis:

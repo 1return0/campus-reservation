@@ -1,0 +1,41 @@
+name: CampusReserve Backend CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  verify-and-package:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: maven
+
+      - name: Run unit and contract tests
+        run: mvn --batch-mode --no-transfer-progress clean verify
+
+      - name: Package deployable service jars
+        run: mvn --batch-mode --no-transfer-progress package -DskipTests
+
+      - name: Build service container images
+        run: |
+          for module in identity-service reservation-service notification-service gateway-service; do
+            docker build \
+              --file deploy/Dockerfile \
+              --build-arg MODULE="$module" \
+              --tag "campusreserve/$module:${{ github.sha }}" \
+              .
+          done

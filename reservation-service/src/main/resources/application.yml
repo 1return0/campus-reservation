@@ -1,0 +1,109 @@
+spring:
+  config:
+    import: optional:file:./deploy/.env[.properties]
+  application:
+    name: reservation-service
+  profiles:
+    default: local
+  datasource:
+    url: ${CAMPUS_RESERVE_DB_URL:jdbc:mysql://127.0.0.1:3306/campus_reserve?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai}
+    username: ${CAMPUS_RESERVE_DB_USERNAME:campus_reserve_app}
+    password: ${CAMPUS_RESERVE_DB_PASSWORD:}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+  cloud:
+    nacos:
+      discovery:
+        enabled: ${NACOS_DISCOVERY_ENABLED:false}
+        server-addr: ${NACOS_SERVER_ADDR:127.0.0.1:8848}
+        namespace: ${NACOS_NAMESPACE:}
+
+  rabbitmq:
+    host: ${RABBITMQ_HOST:127.0.0.1}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USERNAME:guest}
+    password: ${RABBITMQ_PASSWORD:guest}
+    virtual-host: ${RABBITMQ_VIRTUAL_HOST:/}
+    publisher-confirm-type: correlated
+    publisher-returns: true
+    template:
+      mandatory: true
+  data:
+    redis:
+      host: ${RESERVATION_REDIS_HOST:127.0.0.1}
+      port: ${RESERVATION_REDIS_PORT:6379}
+      password: ${RESERVATION_REDIS_PASSWORD:}
+      timeout: 1s
+
+campus-reserve:
+  time-zone: ${CAMPUS_TIME_ZONE:Asia/Shanghai}
+  security:
+    jwt:
+      hmac-base64-secret: ${CAMPUS_JWT_HMAC_SECRET:}
+      issuer: ${CAMPUS_JWT_ISSUER:campus-reserve}
+  messaging:
+    exchange: ${RESERVATION_EVENT_EXCHANGE:campus.reservation.events}
+  outbox:
+    delivery:
+      enabled: ${OUTBOX_DELIVERY_ENABLED:false}
+      fixed-delay-millis: 1000
+      batch-size: 20
+      lease-seconds: 30
+      confirm-timeout-millis: 3000
+  slot-lifecycle:
+    enabled: ${SLOT_LIFECYCLE_ENABLED:true}
+    fixed-delay-millis: ${SLOT_LIFECYCLE_FIXED_DELAY_MILLIS:60000}
+  no-show-lifecycle:
+    enabled: ${NO_SHOW_LIFECYCLE_ENABLED:true}
+    fixed-delay-millis: ${NO_SHOW_LIFECYCLE_FIXED_DELAY_MILLIS:60000}
+    batch-size: ${NO_SHOW_LIFECYCLE_BATCH_SIZE:100}
+  cache:
+    redis:
+      enabled: ${RESERVATION_REDIS_ENABLED:false}
+      resource-ttl-seconds: ${RESERVATION_REDIS_RESOURCE_TTL_SECONDS:300}
+      slot-ttl-seconds: ${RESERVATION_REDIS_SLOT_TTL_SECONDS:30}
+      study-room-windows-ttl-seconds: ${RESERVATION_REDIS_STUDY_ROOM_WINDOWS_TTL_SECONDS:20}
+      ttl-jitter-millis: ${RESERVATION_REDIS_TTL_JITTER_MILLIS:0}
+  admission:
+    rate-limit:
+      # Optional Redis Lua admission control for a high-demand reservation slot.
+      # MySQL still owns capacity, idempotency and the final reservation result.
+      enabled: ${RESERVATION_ADMISSION_RATE_LIMIT_ENABLED:false}
+      window-millis: ${RESERVATION_ADMISSION_RATE_LIMIT_WINDOW_MILLIS:1000}
+      per-slot-max-requests: ${RESERVATION_ADMISSION_PER_SLOT_MAX_REQUESTS:80}
+      per-user-per-slot-max-requests: ${RESERVATION_ADMISSION_PER_USER_PER_SLOT_MAX_REQUESTS:3}
+    study-room:
+      # Optional per-room/day burst shedding; never a room-occupancy counter.
+      enabled: ${STUDY_ROOM_ADMISSION_ENABLED:false}
+      window-millis: ${STUDY_ROOM_ADMISSION_WINDOW_MILLIS:1000}
+      per-room-day-max-requests: ${STUDY_ROOM_ADMISSION_PER_ROOM_DAY_MAX_REQUESTS:80}
+      per-user-per-room-day-max-requests: ${STUDY_ROOM_ADMISSION_PER_USER_PER_ROOM_DAY_MAX_REQUESTS:3}
+
+mybatis-plus:
+  configuration:
+    map-underscore-to-camel-case: true
+  global-config:
+    db-config:
+      id-type: assign_id
+
+server:
+  port: ${SERVER_PORT:8202}
+
+management:
+  health:
+    redis:
+      enabled: ${RESERVATION_REDIS_ENABLED:false}
+  endpoint:
+    health:
+      probes:
+        enabled: true
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+logging:
+  pattern:
+    level: "%5p [requestId:%X{requestId:-}]"
