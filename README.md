@@ -81,9 +81,8 @@ gateway routing, role enforcement, booking idempotency, waitlisting,
 cancellation/promotion, broker confirm, notification Inbox deduplication and
 student notification delivery. The project does not claim Redis quota control,
 Nacos 3 discovery, production multi-instance performance, or load-test results
-until each is verified independently. In particular, the optional Redis Lua
-admission guard is deliberately disabled by default and has only unit-level
-coverage until a separate Redis load/smoke run is recorded.
+until each is verified independently. The optional Redis Lua admission guard
+remains disabled by default; opt-in real Redis checks are recorded separately.
 
 The V2 study-room flow has an opt-in real-MySQL smoke covering consent,
 idempotency, exact intervals, waitlist, maintenance and selected concurrency
@@ -98,10 +97,14 @@ local smoke proves production-scale concurrency or failure recovery. See the
 The V2 Redis admission and cache switches are off by default. Unit tests cover
 guard wiring, 429/503 mapping, database fallback and after-commit cache
 invalidation. Opt-in VM Redis smokes passed for the Lua limiter (including a
-60-request concurrency correctness check at a 20-admission cap) and real cache
+500-request synchronized burst using 500 worker threads at a 20-admission cap)
+and real cache
 serialization; the four real-MySQL cases and local browser-to-notification
 journey also passed with V2 Lua enabled. No throughput or latency improvement
 is claimed without a controlled before/after load comparison.
+The latest Redis 7.0.15 run admitted exactly 20 and rate-limited 480 requests,
+with 500 peak in-flight client guard calls; see the
+[500-request verification record](docs/redis-admission-500-burst-2026-10-12.md).
 
 The maintenance-cancellation extension has automated unit coverage. On the
 local VM, V6 was applied to MySQL and an opt-in smoke verified its transaction,

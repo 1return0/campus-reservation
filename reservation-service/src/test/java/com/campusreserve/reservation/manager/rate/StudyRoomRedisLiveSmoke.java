@@ -15,6 +15,7 @@ import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.IntStream;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -66,6 +67,9 @@ class StudyRoomRedisLiveSmoke {
 
     @Test
     void concurrent_room_day_requests_admit_no_more_than_the_configured_limit() throws Exception {
+        int requestCount = 500;
+        int workerCount = 500;
+        int admissionLimit = 20;
         String host = System.getenv().getOrDefault("RESERVATION_REDIS_HOST", "127.0.0.1");
         int port = Integer.parseInt(System.getenv().getOrDefault("RESERVATION_REDIS_PORT", "6379"));
         RedisStandaloneConfiguration redis = new RedisStandaloneConfiguration(host, port);
@@ -79,35 +83,61 @@ class StudyRoomRedisLiveSmoke {
         LocalDate date = LocalDate.of(2026, 10, 10);
         var properties = new StudyRoomAdmissionRateLimitProperties();
         properties.setWindowMillis(60_000);
-        properties.setPerRoomDayMaxRequests(20);
+        properties.setPerRoomDayMaxRequests(admissionLimit);
         properties.setPerUserPerRoomDayMaxRequests(1);
         var guard = new RedisStudyRoomAdmissionGuard(template, properties);
-        var workers = Executors.newFixedThreadPool(12);
+        var workers = Executors.newFixedThreadPool(workerCount);
+        var ready = new CountDownLatch(workerCount);
         var start = new CountDownLatch(1);
+        var active = new AtomicInteger();
+        var peakActive = new AtomicInteger();
         String scope = "campus-reserve:study-room-admission:{room:" + roomId + ":" + date + "}";
         try {
-            var results = IntStream.range(0, 60).mapToObj(index -> workers.submit(() -> {
+            try (var redisConnection = connection.getConnection()) {
+                assertThat(redisConnection.ping()).isEqualTo("PONG");
+            }
+            var results = IntStream.range(0, requestCount).mapToObj(index -> workers.submit(() -> {
+                ready.countDown();
                 start.await();
+                int currentActive = active.incrementAndGet();
+                peakActive.accumulateAndGet(currentActive, Math::max);
                 try {
                     guard.requireAdmission(roomId, date, "parallel-student-" + index);
                     return true;
                 } catch (BusinessException rejected) {
                     if (!"study-room-admission-rate-limited".equals(rejected.getCode())) { throw rejected; }
                     return false;
+                } finally {
+                    active.decrementAndGet();
                 }
             })).toList();
+            assertThat(ready.await(20, TimeUnit.SECONDS))
+                    .as("all 500 workers must be ready before releasing the burst")
+                    .isTrue();
+            long burstStarted = System.nanoTime();
+            long deadline = burstStarted + TimeUnit.SECONDS.toNanos(30);
             start.countDown();
             int admitted = 0;
             for (var result : results) {
-                if (result.get(15, TimeUnit.SECONDS)) { admitted++; }
+                long remaining = Math.max(1, deadline - System.nanoTime());
+                if (result.get(remaining, TimeUnit.NANOSECONDS)) { admitted++; }
             }
-            assertThat(admitted).isEqualTo(20);
+            int rejected = requestCount - admitted;
+            assertThat(admitted).isEqualTo(admissionLimit);
+            assertThat(rejected).isEqualTo(480);
+            assertThat(active.get()).isZero();
+            assertThat(template.opsForValue().get(scope + ":total")).isEqualTo("500");
+            System.out.printf("PASS Redis Lua burst: requests=%d, workers=%d, admitted=%d, "
+                            + "rejected=%d, peak_active_calls=%d, elapsed_ms=%d%n",
+                    requestCount, workerCount, admitted, rejected, peakActive.get(),
+                    TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - burstStarted));
         } finally {
+            start.countDown();
             workers.shutdownNow();
             workers.awaitTermination(10, TimeUnit.SECONDS);
             var keys = new java.util.ArrayList<String>();
             keys.add(scope + ":total");
-            IntStream.range(0, 60).forEach(index -> keys.add(scope + ":user:parallel-student-" + index));
+            IntStream.range(0, requestCount).forEach(index -> keys.add(scope + ":user:parallel-student-" + index));
             template.delete(keys);
             connection.destroy();
         }

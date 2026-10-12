@@ -28,3 +28,5 @@ powershell -NoProfile -ExecutionPolicy Bypass -File deploy/benchmark/catalog-rea
 Redis 组需要在进程环境设置 `RESERVATION_REDIS_PASSWORD`（不写入仓库）。脚本使用 `deploy/.env` 的其他本地连接设置；测试启动并清理自己创建的 Java 进程，日志写在忽略入库的 `target/catalog-benchmark-*` 下。指标由 [Node 测量脚本](../deploy/benchmark/catalog-read.js)输出。
 
 同日验证：`mvn test` 生成 23 份新 Surefire 报告，共 63 项测试、0 失败、0 错误、1 跳过；真实 Redis/Lua Smoke 通过，包括 12 个工作线程处理 60 次准入请求时按 20 次上限准确放行；[研讨室浏览器全链路 Smoke](../deploy/smoke/study-room-end-to-end.ps1) 通过，覆盖 Gateway、JWT、MySQL、Outbox、RabbitMQ、Inbox。Smoke 证明选定链路和条件成立，不是高并发吞吐或故障恢复证明。
+
+后续同日将Lua准入测试扩至500个工作线程、500次同步起跑请求，实测准入20次、限流拒绝480次，详见 [500次并发验证记录](redis-admission-500-burst-2026-10-12.md)。
