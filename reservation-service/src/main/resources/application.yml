@@ -66,6 +66,7 @@ campus-reserve:
       slot-ttl-seconds: ${RESERVATION_REDIS_SLOT_TTL_SECONDS:30}
       study-room-windows-ttl-seconds: ${RESERVATION_REDIS_STUDY_ROOM_WINDOWS_TTL_SECONDS:20}
       ttl-jitter-millis: ${RESERVATION_REDIS_TTL_JITTER_MILLIS:0}
+      rebuild-wait-millis: ${RESERVATION_CACHE_REBUILD_WAIT_MILLIS:1000}
   admission:
     rate-limit:
       # Optional Redis Lua admission control for a high-demand reservation slot.

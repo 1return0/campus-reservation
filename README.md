@@ -55,11 +55,20 @@ Spring Cloud Alibaba line requires Nacos Server 3.x for the default namespace.
 - MySQL 8, Flyway and MyBatis-Plus for ordinary CRUD; a schema per service
 - Spring Cloud Gateway and RabbitMQ for service ingress and asynchronous events
 - Redis for short-lived public catalog reads, with after-commit cache invalidation,
-  per-key local cache rebuild coordination and optional TTL jitter; an explicitly
+  per-key Redisson distributed cache rebuild coordination and optional TTL jitter; an explicitly
   enabled Lua admission guard can shed hot-slot bursts. A separate optional
   room/use-date and student/room/use-date Lua guard protects study-room writes;
   public room windows can use a short-TTL cache with after-commit invalidation.
   MySQL remains the final quota, interval-conflict and idempotency guard
+
+Public queries retain `@Cacheable(sync = true)` as the Spring interception entry,
+but the Redis CacheManager now wraps synchronous loads with a shared Redisson
+per-key lock and a second cache check. This is not merely local synchronization.
+Lock contention waits at most one second by default, then rechecks the cache;
+a still-missing value returns `503 public-cache-rebuild-busy`, not a database stampede.
+Redis failures fall back to the query loader; TTL bounds staleness, not strong
+consistency. Two independent JVMs sharing real Redis returned 40 results with
+one instrumented loader execution. See [verification and boundaries](docs/distributed-cache-rebuild-2026-10-14.md).
 - Narrow custom Mapper SQL for capacity compare-and-update, interval overlap
   and participant-conflict checks, and `FOR UPDATE SKIP LOCKED` waitlist claiming
 - JUnit and Testcontainers for real MySQL integration tests

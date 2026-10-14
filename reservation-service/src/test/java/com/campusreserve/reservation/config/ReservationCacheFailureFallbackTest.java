@@ -7,6 +7,10 @@ import org.springframework.cache.CacheManager;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.redis.RedisConnectionFailureException;
+import com.campusreserve.reservation.manager.cache.DistributedRebuildCacheManager;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.springframework.boot.autoconfigure.data.redis.RedisProperties;
+import org.springframework.data.redis.connection.RedisConnectionFactory;
 
 import java.util.concurrent.Callable;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -17,6 +21,21 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 class ReservationCacheFailureFallbackTest {
+    @Test
+    void enabled_configuration_installs_distributed_manager_without_connecting_at_startup() {
+        RedisConnectionFactory connection = mock(RedisConnectionFactory.class);
+        new ApplicationContextRunner().withUserConfiguration(ReservationCacheConfiguration.class)
+                .withPropertyValues("campus-reserve.cache.redis.enabled=true")
+                .withBean(RedisConnectionFactory.class, () -> connection)
+                .withBean(ObjectMapper.class, ObjectMapper::new)
+                .withBean(RedisProperties.class, RedisProperties::new)
+                .run(context -> {
+                    assertThat(context).hasNotFailed().hasSingleBean(CacheManager.class);
+                    assertThat(context.getBean(CacheManager.class)).isInstanceOf(DistributedRebuildCacheManager.class);
+                    org.mockito.Mockito.verifyNoInteractions(connection);
+                });
+    }
+
     @Test
     void advisory_cache_read_failure_falls_back_to_the_service_method() {
         Cache cache = mock(Cache.class);

@@ -14,6 +14,11 @@
     <description>Campus resource reservation and waitlist microservice</description>
     <dependencies>
         <dependency>
+            <groupId>org.redisson</groupId>
+            <artifactId>redisson</artifactId>
+            <version>3.52.0</version>
+        </dependency>
+        <dependency>
             <groupId>com.campusreserve</groupId>
             <artifactId>campus-common</artifactId>
             <version>${project.version}</version>

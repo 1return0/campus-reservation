@@ -3,6 +3,13 @@ package com.campusreserve.reservation.config;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import com.fasterxml.jackson.databind.jsontype.BasicPolymorphicTypeValidator;
+import com.campusreserve.reservation.manager.cache.DistributedRebuildCacheManager;
+import org.redisson.Redisson;
+import org.redisson.api.RedissonClient;
+import org.redisson.config.Config;
+import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.boot.autoconfigure.data.redis.RedisProperties;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.ConfigurationProperties;
@@ -43,6 +50,32 @@ public class ReservationCacheConfiguration implements CachingConfigurer {
 
     @Bean
     @ConditionalOnProperty(prefix = "campus-reserve.cache.redis", name = "enabled", havingValue = "true")
+    CacheManager distributedPublicCacheManager(RedisConnectionFactory connectionFactory,
+            ObjectMapper objectMapper, ReservationCacheProperties properties,
+            ObjectProvider<RedissonClient> redisson) {
+        return new DistributedRebuildCacheManager(
+                reservationRedisCacheManager(connectionFactory, objectMapper, properties),
+                redisson::getObject, properties.rebuildWaitMillis);
+    }
+
+    @Bean(destroyMethod = "shutdown")
+    @Lazy
+    @ConditionalOnProperty(prefix = "campus-reserve.cache.redis", name = "enabled", havingValue = "true")
+    RedissonClient publicCacheRedissonClient(RedisProperties redis) {
+        Config config = new Config();
+        config.setLazyInitialization(true);
+        config.setNettyThreads(4);
+        config.setThreads(2);
+        var server = config.useSingleServer()
+                .setAddress((redis.getSsl().isEnabled() ? "rediss://" : "redis://") + redis.getHost() + ":" + redis.getPort())
+                .setDatabase(redis.getDatabase()).setConnectionMinimumIdleSize(1).setConnectionPoolSize(8)
+                .setSubscriptionConnectionMinimumIdleSize(1).setSubscriptionConnectionPoolSize(2)
+                .setConnectTimeout(1000).setTimeout(1000).setRetryAttempts(0);
+        if (redis.getPassword() != null && !redis.getPassword().isBlank()) { server.setPassword(redis.getPassword()); }
+        if (redis.getUsername() != null && !redis.getUsername().isBlank()) { server.setUsername(redis.getUsername()); }
+        return Redisson.create(config);
+    }
+
     CacheManager reservationRedisCacheManager(
             RedisConnectionFactory connectionFactory,
             ObjectMapper objectMapper,
@@ -101,6 +134,10 @@ public class ReservationCacheConfiguration implements CachingConfigurer {
         private long slotTtlSeconds = 30;
         private long studyRoomWindowsTtlSeconds = 20;
         private long ttlJitterMillis;
+        private long rebuildWaitMillis = 1000;
+
+        public long getRebuildWaitMillis() { return rebuildWaitMillis; }
+        public void setRebuildWaitMillis(long value) { this.rebuildWaitMillis = value; }
 
         public boolean isEnabled() { return enabled; }
         public void setEnabled(boolean enabled) { this.enabled = enabled; }
