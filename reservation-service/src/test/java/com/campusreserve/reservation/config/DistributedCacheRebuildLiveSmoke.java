@@ -11,10 +11,14 @@ import org.springframework.data.redis.connection.RedisStandaloneConfiguration;
 import org.springframework.data.redis.connection.lettuce.LettuceConnectionFactory;
 
 import java.nio.file.Path;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Proxy;
 import java.util.ArrayList;
 import java.util.UUID;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
+import org.redisson.api.RLock;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -39,11 +43,19 @@ class DistributedCacheRebuildLiveSmoke {
                 assertThat(first.exitValue()).isZero();
                 assertThat(second.exitValue()).isZero();
                 assertThat(client.getAtomicLong(key + ":loads").get()).isEqualTo(1);
-                System.out.println("PASS distributed cache rebuild: jvms=2 requests=40 loader_calls=1");
+                long attempts = client.getAtomicLong(key + ":attempts").get();
+                long acquisitions = client.getAtomicLong(key + ":acquisitions").get();
+                assertThat(attempts).isGreaterThanOrEqualTo(1L);
+                // A request may acquire after its last miss races with a completed refill.
+                // Lock counts are observations, not an assumed performance improvement.
+                assertThat(acquisitions).isBetween(1L, 40L);
+                System.out.printf("PASS distributed cache rebuild: jvms=2 requests=40 loader_calls=1 lock_attempts=%d lock_acquisitions=%d%n",
+                        attempts, acquisitions);
             } finally {
                 if (first != null && first.isAlive()) { first.destroyForcibly().waitFor(); }
                 if (second != null && second.isAlive()) { second.destroyForcibly().waitFor(); }
-                client.getKeys().delete(key + ":loads", "study-room-windows::" + key);
+                client.getKeys().delete(key + ":loads", key + ":attempts", key + ":acquisitions",
+                        "study-room-windows::" + key);
             }
         } finally { client.shutdown(); }
     }
@@ -73,9 +85,30 @@ class DistributedCacheRebuildLiveSmoke {
             var pool = Executors.newFixedThreadPool(20);
             RedissonClient client = connect();
             try {
+                AtomicInteger attempts = new AtomicInteger();
+                AtomicInteger acquisitions = new AtomicInteger();
+                RedissonClient counted = (RedissonClient) Proxy.newProxyInstance(
+                        RedissonClient.class.getClassLoader(), new Class<?>[]{RedissonClient.class}, (proxy, method, values) -> {
+                            try {
+                                Object result = method.invoke(client, values);
+                                if (!method.getName().equals("getLock")) { return result; }
+                                RLock target = (RLock) result;
+                                return Proxy.newProxyInstance(RLock.class.getClassLoader(), new Class<?>[]{RLock.class},
+                                        (lockProxy, lockMethod, lockValues) -> {
+                                            try {
+                                                if (lockMethod.getName().equals("tryLock")) { attempts.incrementAndGet(); }
+                                                Object acquired = lockMethod.invoke(target, lockValues);
+                                                if (lockMethod.getName().equals("tryLock") && Boolean.TRUE.equals(acquired)) {
+                                                    acquisitions.incrementAndGet();
+                                                }
+                                                return acquired;
+                                            } catch (InvocationTargetException exception) { throw exception.getCause(); }
+                                        });
+                            } catch (InvocationTargetException exception) { throw exception.getCause(); }
+                        });
                 var raw = new ReservationCacheConfiguration().reservationRedisCacheManager(connection,
                         new ObjectMapper().findAndRegisterModules(), new ReservationCacheConfiguration.ReservationCacheProperties());
-                var cache = new DistributedRebuildCacheManager(raw, () -> client, 5000).getCache("study-room-windows");
+                var cache = new DistributedRebuildCacheManager(raw, () -> counted, 5000).getCache("study-room-windows");
                 var futures = new ArrayList<java.util.concurrent.Future<String>>();
                 for (int i = 0; i < 20; i++) {
                     futures.add(pool.submit(() -> {
@@ -89,6 +122,8 @@ class DistributedCacheRebuildLiveSmoke {
                     }));
                 }
                 for (var future : futures) { assertThat(future.get(20, TimeUnit.SECONDS)).isEqualTo("database-result"); }
+                client.getAtomicLong(args[0] + ":attempts").addAndGet(attempts.get());
+                client.getAtomicLong(args[0] + ":acquisitions").addAndGet(acquisitions.get());
             } finally { pool.shutdownNow(); client.shutdown(); connection.destroy(); }
         }
     }

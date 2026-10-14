@@ -14,6 +14,7 @@ import java.security.NoSuchAlgorithmException;
 import java.util.Collection;
 import java.util.HexFormat;
 import java.util.concurrent.Callable;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
 
@@ -61,26 +62,47 @@ public class DistributedRebuildCacheManager implements CacheManager {
         public <T> T get(Object key, Callable<T> loader) {
             RLock lock = null;
             boolean acquired = false;
+            long deadline = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(waitMillis);
+            boolean attempted = false;
+            int pauseMillis = 20;
             try {
-                // Only Redis operations are caught here; loader failures must never cause a second load.
-                try {
-                    ValueWrapper hit = cache.get(key);
-                    if (hit != null) { return (T) hit.get(); }
-                    lock = client.get().getLock(lockName(getName(), key));
-                    // No fixed lease: Redisson watchdog renews while this client owns the lock.
-                    acquired = lock.tryLock(waitMillis, TimeUnit.MILLISECONDS);
-                    hit = cache.get(key); // double-check, including the bounded-wait timeout path
-                    if (hit != null) { return (T) hit.get(); }
-                } catch (InterruptedException exception) {
-                    Thread.currentThread().interrupt();
-                    throw new ValueRetrievalException(key, loader, busy());
-                } catch (RuntimeException exception) {
-                    log.warn("Public cache unavailable; falling back to database for {}", getName());
-                    return load(key, loader);
-                }
-                if (!acquired) {
-                    // Do not turn ordinary lock contention into unbounded database fan-out.
-                    throw new ValueRetrievalException(key, loader, busy());
+                while (!acquired) {
+                    boolean expired = attempted && System.nanoTime() >= deadline;
+                    // Only Redis operations are caught here; loader failures must never cause a second load.
+                    try {
+                        ValueWrapper hit = cache.get(key);
+                        if (hit != null) { return (T) hit.get(); }
+                        if (!expired) {
+                            if (lock == null) { lock = client.get().getLock(lockName(getName(), key)); }
+                            // Immediate interruptible attempt, no fixed lease; watchdog renewal remains enabled.
+                            acquired = lock.tryLock(0, TimeUnit.MILLISECONDS);
+                            attempted = true;
+                            if (acquired) {
+                                hit = cache.get(key); // lock-holder double-check
+                                if (hit != null) { return (T) hit.get(); }
+                            }
+                        }
+                    } catch (InterruptedException exception) {
+                        Thread.currentThread().interrupt();
+                        throw new ValueRetrievalException(key, loader, busy());
+                    } catch (RuntimeException exception) {
+                        log.warn("Public cache unavailable; falling back to database for {}", getName());
+                        return load(key, loader);
+                    }
+                    if (expired) { throw new ValueRetrievalException(key, loader, busy()); }
+                    if (!acquired) {
+                        long remaining = deadline - System.nanoTime();
+                        if (remaining > 0) {
+                            long delay = Math.min(remaining, TimeUnit.MILLISECONDS.toNanos(
+                                    ThreadLocalRandom.current().nextLong(pauseMillis, pauseMillis * 2L)));
+                            try { TimeUnit.NANOSECONDS.sleep(delay); }
+                            catch (InterruptedException exception) {
+                                Thread.currentThread().interrupt();
+                                throw new ValueRetrievalException(key, loader, busy());
+                            }
+                            pauseMillis = Math.min(100, pauseMillis * 2);
+                        }
+                    }
                 }
                 T value = load(key, loader);
                 try { cache.put(key, value); }

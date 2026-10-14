@@ -28,7 +28,7 @@ class DistributedRebuildCacheManagerTest {
 
     private void acquired() throws InterruptedException {
         when(client.getLock(anyString())).thenReturn(lock);
-        when(lock.tryLock(10, TimeUnit.MILLISECONDS)).thenReturn(true);
+        when(lock.tryLock(0, TimeUnit.MILLISECONDS)).thenReturn(true);
         when(lock.isHeldByCurrentThread()).thenReturn(true);
     }
 
@@ -47,7 +47,7 @@ class DistributedRebuildCacheManagerTest {
 
     @Test void checks_cache_again_after_acquiring_lock() throws Exception {
         acquired();
-        when(lock.tryLock(10, TimeUnit.MILLISECONDS)).thenAnswer(call -> {
+        when(lock.tryLock(0, TimeUnit.MILLISECONDS)).thenAnswer(call -> {
             raw.getCache("windows").put(1L, "other instance"); return true;
         });
         assertThat(cache.<String>get(1L, () -> { throw new AssertionError(); })).isEqualTo("other instance");
@@ -102,7 +102,7 @@ class DistributedRebuildCacheManagerTest {
 
     @Test void interruption_preserves_interrupt_and_does_not_load() throws Exception {
         when(client.getLock(anyString())).thenReturn(lock);
-        when(lock.tryLock(10, TimeUnit.MILLISECONDS)).thenThrow(new InterruptedException());
+        when(lock.tryLock(0, TimeUnit.MILLISECONDS)).thenThrow(new InterruptedException());
         try {
             assertThatThrownBy(() -> cache.get(1L, () -> { throw new AssertionError(); }))
                     .isInstanceOf(Cache.ValueRetrievalException.class);

@@ -62,13 +62,16 @@ Spring Cloud Alibaba line requires Nacos Server 3.x for the default namespace.
   MySQL remains the final quota, interval-conflict and idempotency guard
 
 Public queries retain `@Cacheable(sync = true)` as the Spring interception entry,
-but the Redis CacheManager now wraps synchronous loads with a shared Redisson
-per-key lock and a second cache check. This is not merely local synchronization.
+but the Redis CacheManager wraps cache loading with a shared Redisson per-key
+lock and a second cache check. On contention, callers immediately try the lock
+and recheck cache with bounded jittered backoff. A refill can be returned without
+first acquiring the lock. No local Future map or request-coalescing layer is used.
 Lock contention waits at most one second by default, then rechecks the cache;
 a still-missing value returns `503 public-cache-rebuild-busy`, not a database stampede.
 Redis failures fall back to the query loader; TTL bounds staleness, not strong
 consistency. Two independent JVMs sharing real Redis returned 40 results with
-one instrumented loader execution. See [verification and boundaries](docs/distributed-cache-rebuild-2026-10-14.md).
+one instrumented loader execution in the first revision. See [that verification](docs/distributed-cache-rebuild-2026-10-14.md)
+and [the bounded-retry update and its current verification](docs/cache-rebuild-bounded-retry-2026-10-14.md).
 - Narrow custom Mapper SQL for capacity compare-and-update, interval overlap
   and participant-conflict checks, and `FOR UPDATE SKIP LOCKED` waitlist claiming
 - JUnit and Testcontainers for real MySQL integration tests
