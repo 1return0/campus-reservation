@@ -30,6 +30,14 @@ campus-reserve:
       hmac-base64-secret: ${CAMPUS_JWT_HMAC_SECRET:}
       issuer: ${CAMPUS_JWT_ISSUER:campus-reserve}
   messaging:
+    exchange: ${RESERVATION_EVENT_EXCHANGE:campus.reservation.events}
+    queue: ${NOTIFICATION_SOURCE_QUEUE:campus.notification.reservation.v1}
+    dead-letter-queue: ${NOTIFICATION_DLQ:campus.notification.reservation.dlq}
+    dlq:
+      monitor:
+        enabled: ${NOTIFICATION_DLQ_MONITOR_ENABLED:false}
+        interval-millis: ${NOTIFICATION_DLQ_MONITOR_INTERVAL_MILLIS:60000}
+        alert-threshold: ${NOTIFICATION_DLQ_ALERT_THRESHOLD:1}
     consumer:
       enabled: ${RESERVATION_EVENT_CONSUMER_ENABLED:false}
       retry:

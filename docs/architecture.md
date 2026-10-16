@@ -60,7 +60,8 @@ correctness depends on the `WHERE` condition being evaluated by MySQL:
 
 - decrement capacity only when `available_capacity > 0`;
 - release capacity without exceeding `capacity`;
-- lock one waitlist candidate using `FOR UPDATE SKIP LOCKED`;
+- lock the oldest waiting candidate by `created_at ASC, id ASC` using ordinary
+  `FOR UPDATE`; wait for a locked queue head rather than skipping ahead;
 - lock the resource row, then reject any overlapping open slot interval before
   creating a new slot;
 - update a reservation fulfilment state only when its prior state and staff

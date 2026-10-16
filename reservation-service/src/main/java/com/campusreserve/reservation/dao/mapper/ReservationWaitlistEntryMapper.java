@@ -22,11 +22,12 @@ public interface ReservationWaitlistEntryMapper extends BaseMapper<ReservationWa
             """)
     int countWaitingPosition(@Param("reservationId") Long reservationId);
 
+    /** Preserve queue order: wait for a locked head rather than skipping to a later student. */
     @Select("""
             SELECT * FROM reservation_waitlist_entry
             WHERE slot_id = #{slotId} AND status = 'WAITING'
             ORDER BY created_at ASC, id ASC
-            LIMIT 1 FOR UPDATE SKIP LOCKED
+            LIMIT 1 FOR UPDATE
             """)
     ReservationWaitlistEntryEntity lockOldestWaiting(@Param("slotId") Long slotId);
 

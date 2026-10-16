@@ -10,7 +10,7 @@ import org.springframework.amqp.core.TopicExchange;
 import org.springframework.amqp.rabbit.config.RetryInterceptorBuilder;
 import org.springframework.amqp.rabbit.config.SimpleRabbitListenerContainerFactory;
 import org.springframework.amqp.rabbit.connection.ConnectionFactory;
-import org.springframework.amqp.rabbit.retry.RejectAndDontRequeueRecoverer;
+import com.campusreserve.notification.manager.mq.dlq.LoggingRejectAndDontRequeueRecoverer;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
@@ -100,7 +100,7 @@ public class ReservationEventConsumerConfiguration {
                         true
                 ))
                 .backOffOptions(initialIntervalMillis, multiplier, maxIntervalMillis)
-                .recoverer(new RejectAndDontRequeueRecoverer())
+                .recoverer(new LoggingRejectAndDontRequeueRecoverer(maxAttempts))
                 .build());
         return factory;
     }

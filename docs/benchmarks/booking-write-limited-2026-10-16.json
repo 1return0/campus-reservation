@@ -1,0 +1,235 @@
+{
+  "run": "bwa07e5146c1",
+  "mode": "limited",
+  "startedAt": "2026-10-16T07:47:24.516Z",
+  "cases": [
+    {
+      "label": "lecture-hot-slot-limited",
+      "requests": 500,
+      "concurrency": 100,
+      "roomCount": 1,
+      "wallSeconds": 2.042,
+      "completedRequestsPerSecond": 244.87,
+      "p50Millis": 373.59,
+      "p95Millis": 791.08,
+      "p99Millis": 861.98,
+      "maxMillis": 1039.84,
+      "statuses": {
+        "200": 20,
+        "429": 480
+      },
+      "outcomes": {
+        "CONFIRMED": 20,
+        "reservation-admission-rate-limited": 480
+      },
+      "errors": {},
+      "state": {
+        "orders": 20,
+        "outbox": 20,
+        "confirmed": 20,
+        "remaining": 0,
+        "waitlisted": 0,
+        "waitingEntries": 0,
+        "duplicateActive": 0
+      },
+      "correct": true,
+      "latencyByHttpStatus": {
+        "200": {
+          "count": 20,
+          "p50Millis": 494.87,
+          "p95Millis": 918.07,
+          "p99Millis": 1039.84
+        },
+        "429": {
+          "count": 480,
+          "p50Millis": 366.43,
+          "p95Millis": 783.38,
+          "p99Millis": 861.78
+        }
+      },
+      "globalInnodbLockDelta": {
+        "waits": 19,
+        "waitTimeMillis": 4597,
+        "note": "Server-global delta, may include unrelated connections; not per-request tracing"
+      }
+    },
+    {
+      "label": "room-hot-interval-limited",
+      "requests": 500,
+      "concurrency": 100,
+      "roomCount": 1,
+      "wallSeconds": 2.555,
+      "completedRequestsPerSecond": 195.73,
+      "p50Millis": 307.06,
+      "p95Millis": 1416.08,
+      "p99Millis": 1521.86,
+      "maxMillis": 1756.99,
+      "statuses": {
+        "200": 20,
+        "429": 480
+      },
+      "outcomes": {
+        "CONFIRMED": 1,
+        "WAITLISTED": 19,
+        "study-room-admission-rate-limited": 480
+      },
+      "errors": {},
+      "state": {
+        "orders": 20,
+        "outbox": 20,
+        "buckets": 4,
+        "overlaps": 0,
+        "confirmed": 1,
+        "waitlisted": 19
+      },
+      "correct": true,
+      "latencyByHttpStatus": {
+        "200": {
+          "count": 20,
+          "p50Millis": 816.93,
+          "p95Millis": 1620.98,
+          "p99Millis": 1679.17
+        },
+        "429": {
+          "count": 480,
+          "p50Millis": 303.13,
+          "p95Millis": 1390.23,
+          "p99Millis": 1500.63
+        }
+      },
+      "globalInnodbLockDelta": {
+        "waits": 19,
+        "waitTimeMillis": 7464,
+        "note": "Server-global delta, may include unrelated connections; not per-request tracing"
+      }
+    },
+    {
+      "label": "lecture-hot-slot-limited",
+      "requests": 500,
+      "concurrency": 500,
+      "roomCount": 1,
+      "wallSeconds": 1.789,
+      "completedRequestsPerSecond": 279.53,
+      "p50Millis": 955.25,
+      "p95Millis": 1572.16,
+      "p99Millis": 1597.34,
+      "maxMillis": 1600.68,
+      "statuses": {
+        "200": 20,
+        "429": 480
+      },
+      "outcomes": {
+        "CONFIRMED": 20,
+        "reservation-admission-rate-limited": 480
+      },
+      "errors": {},
+      "state": {
+        "orders": 20,
+        "outbox": 20,
+        "confirmed": 20,
+        "remaining": 0,
+        "waitlisted": 0,
+        "waitingEntries": 0,
+        "duplicateActive": 0
+      },
+      "correct": true,
+      "latencyByHttpStatus": {
+        "200": {
+          "count": 20,
+          "p50Millis": 481.91,
+          "p95Millis": 788.75,
+          "p99Millis": 840.75
+        },
+        "429": {
+          "count": 480,
+          "p50Millis": 976.85,
+          "p95Millis": 1572.38,
+          "p99Millis": 1597.39
+        }
+      },
+      "globalInnodbLockDelta": {
+        "waits": 19,
+        "waitTimeMillis": 4727,
+        "note": "Server-global delta, may include unrelated connections; not per-request tracing"
+      }
+    },
+    {
+      "label": "room-hot-interval-limited",
+      "requests": 500,
+      "concurrency": 500,
+      "roomCount": 1,
+      "wallSeconds": 1.581,
+      "completedRequestsPerSecond": 316.26,
+      "p50Millis": 1148.26,
+      "p95Millis": 1435.02,
+      "p99Millis": 1477.17,
+      "maxMillis": 1500.65,
+      "statuses": {
+        "200": 20,
+        "429": 480
+      },
+      "outcomes": {
+        "CONFIRMED": 1,
+        "WAITLISTED": 19,
+        "study-room-admission-rate-limited": 480
+      },
+      "errors": {},
+      "state": {
+        "orders": 20,
+        "outbox": 20,
+        "buckets": 4,
+        "overlaps": 0,
+        "confirmed": 1,
+        "waitlisted": 19
+      },
+      "correct": true,
+      "latencyByHttpStatus": {
+        "200": {
+          "count": 20,
+          "p50Millis": 566.31,
+          "p95Millis": 957.49,
+          "p99Millis": 998.19
+        },
+        "429": {
+          "count": 480,
+          "p50Millis": 1162.9,
+          "p95Millis": 1435.33,
+          "p99Millis": 1477.95
+        }
+      },
+      "globalInnodbLockDelta": {
+        "waits": 19,
+        "waitTimeMillis": 4306,
+        "note": "Server-global delta, may include unrelated connections; not per-request tracing"
+      }
+    }
+  ],
+  "cleanup": "passed",
+  "workload": {
+    "requestCount": 500,
+    "levels": [
+      100,
+      500
+    ],
+    "repeats": 1,
+    "closedLoop": true,
+    "identity": "synthetic signed STUDENT JWT; login and team creation excluded",
+    "logging": "INFO",
+    "serviceInstances": 1,
+    "jvmMaxHeapMiB": 512,
+    "datasourcePool": "Hikari default 10",
+    "nodeVersion": "v22.13.0",
+    "limiter": {
+      "windowMillis": 60000,
+      "perScopeMaxRequests": 20,
+      "note": "Controlled one-window burst comparison, not a recommended production quota"
+    }
+  },
+  "database": {
+    "version": "8.0.45",
+    "isolation": "REPEATABLE-READ",
+    "maxConnections": 151,
+    "innodbLockWaitTimeout": 50
+  },
+  "finishedAt": "2026-10-16T07:48:14.850Z"
+}

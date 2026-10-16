@@ -1,0 +1,294 @@
+{
+  "run": "bw5dcaed99b3",
+  "mode": "baseline",
+  "startedAt": "2026-10-16T07:32:05.728Z",
+  "cases": [
+    {
+      "label": "lecture-hot-slot",
+      "requests": 500,
+      "concurrency": 50,
+      "roomCount": 1,
+      "wallSeconds": 8.91,
+      "completedRequestsPerSecond": 56.11,
+      "p50Millis": 896.46,
+      "p95Millis": 1038.95,
+      "p99Millis": 1073.96,
+      "maxMillis": 1102.16,
+      "statuses": {
+        "200": 500
+      },
+      "outcomes": {
+        "CONFIRMED": 20,
+        "WAITLISTED": 480
+      },
+      "errors": {},
+      "state": {
+        "orders": 500,
+        "outbox": 500,
+        "confirmed": 20,
+        "remaining": 0,
+        "waitlisted": 480,
+        "waitingEntries": 480,
+        "duplicateActive": 0
+      },
+      "correct": true
+    },
+    {
+      "label": "room-hot-interval",
+      "requests": 500,
+      "concurrency": 50,
+      "roomCount": 1,
+      "wallSeconds": 10.494,
+      "completedRequestsPerSecond": 47.65,
+      "p50Millis": 1034.22,
+      "p95Millis": 1102.26,
+      "p99Millis": 1124.61,
+      "maxMillis": 1150.58,
+      "statuses": {
+        "200": 500
+      },
+      "outcomes": {
+        "CONFIRMED": 1,
+        "WAITLISTED": 499
+      },
+      "errors": {},
+      "state": {
+        "orders": 500,
+        "outbox": 500,
+        "buckets": 4,
+        "overlaps": 0,
+        "confirmed": 1,
+        "waitlisted": 499
+      },
+      "correct": true
+    },
+    {
+      "label": "room-spread-12",
+      "requests": 500,
+      "concurrency": 50,
+      "roomCount": 12,
+      "wallSeconds": 3.428,
+      "completedRequestsPerSecond": 145.88,
+      "p50Millis": 328.51,
+      "p95Millis": 407.14,
+      "p99Millis": 450.53,
+      "maxMillis": 643.26,
+      "statuses": {
+        "200": 500
+      },
+      "outcomes": {
+        "CONFIRMED": 12,
+        "WAITLISTED": 488
+      },
+      "errors": {},
+      "state": {
+        "orders": 500,
+        "outbox": 500,
+        "buckets": 48,
+        "overlaps": 0,
+        "confirmed": 12,
+        "waitlisted": 488
+      },
+      "correct": true
+    },
+    {
+      "label": "lecture-hot-slot",
+      "requests": 500,
+      "concurrency": 100,
+      "roomCount": 1,
+      "wallSeconds": 7.222,
+      "completedRequestsPerSecond": 69.23,
+      "p50Millis": 1440,
+      "p95Millis": 1495.67,
+      "p99Millis": 1501.63,
+      "maxMillis": 1502.98,
+      "statuses": {
+        "200": 500
+      },
+      "outcomes": {
+        "CONFIRMED": 20,
+        "WAITLISTED": 480
+      },
+      "errors": {},
+      "state": {
+        "orders": 500,
+        "outbox": 500,
+        "confirmed": 20,
+        "remaining": 0,
+        "waitlisted": 480,
+        "waitingEntries": 480,
+        "duplicateActive": 0
+      },
+      "correct": true
+    },
+    {
+      "label": "room-hot-interval",
+      "requests": 500,
+      "concurrency": 100,
+      "roomCount": 1,
+      "wallSeconds": 11.192,
+      "completedRequestsPerSecond": 44.67,
+      "p50Millis": 1885.31,
+      "p95Millis": 2707.27,
+      "p99Millis": 2717.35,
+      "maxMillis": 2720.09,
+      "statuses": {
+        "200": 500
+      },
+      "outcomes": {
+        "CONFIRMED": 1,
+        "WAITLISTED": 499
+      },
+      "errors": {},
+      "state": {
+        "orders": 500,
+        "outbox": 500,
+        "buckets": 4,
+        "overlaps": 0,
+        "confirmed": 1,
+        "waitlisted": 499
+      },
+      "correct": true
+    },
+    {
+      "label": "room-spread-12",
+      "requests": 500,
+      "concurrency": 100,
+      "roomCount": 12,
+      "wallSeconds": 2.765,
+      "completedRequestsPerSecond": 180.84,
+      "p50Millis": 538.31,
+      "p95Millis": 603.02,
+      "p99Millis": 638.73,
+      "maxMillis": 1091.1,
+      "statuses": {
+        "200": 500
+      },
+      "outcomes": {
+        "CONFIRMED": 12,
+        "WAITLISTED": 488
+      },
+      "errors": {},
+      "state": {
+        "orders": 500,
+        "outbox": 500,
+        "buckets": 48,
+        "overlaps": 0,
+        "confirmed": 12,
+        "waitlisted": 488
+      },
+      "correct": true
+    },
+    {
+      "label": "lecture-hot-slot",
+      "requests": 500,
+      "concurrency": 500,
+      "roomCount": 1,
+      "wallSeconds": 6.774,
+      "completedRequestsPerSecond": 73.82,
+      "p50Millis": 3377.09,
+      "p95Millis": 6336.98,
+      "p99Millis": 6592.11,
+      "maxMillis": 6650.31,
+      "statuses": {
+        "200": 500
+      },
+      "outcomes": {
+        "CONFIRMED": 20,
+        "WAITLISTED": 480
+      },
+      "errors": {},
+      "state": {
+        "orders": 500,
+        "outbox": 500,
+        "confirmed": 20,
+        "remaining": 0,
+        "waitlisted": 480,
+        "waitingEntries": 480,
+        "duplicateActive": 0
+      },
+      "correct": true
+    },
+    {
+      "label": "room-hot-interval",
+      "requests": 500,
+      "concurrency": 500,
+      "roomCount": 1,
+      "wallSeconds": 9.206,
+      "completedRequestsPerSecond": 54.31,
+      "p50Millis": 4141.79,
+      "p95Millis": 8756.04,
+      "p99Millis": 9103.67,
+      "maxMillis": 9182.67,
+      "statuses": {
+        "200": 500
+      },
+      "outcomes": {
+        "CONFIRMED": 1,
+        "WAITLISTED": 499
+      },
+      "errors": {},
+      "state": {
+        "orders": 500,
+        "outbox": 500,
+        "buckets": 4,
+        "overlaps": 0,
+        "confirmed": 1,
+        "waitlisted": 499
+      },
+      "correct": true
+    },
+    {
+      "label": "room-spread-12",
+      "requests": 500,
+      "concurrency": 500,
+      "roomCount": 12,
+      "wallSeconds": 2.846,
+      "completedRequestsPerSecond": 175.66,
+      "p50Millis": 1557.08,
+      "p95Millis": 2625.73,
+      "p99Millis": 2723.07,
+      "maxMillis": 2760.64,
+      "statuses": {
+        "200": 500
+      },
+      "outcomes": {
+        "CONFIRMED": 12,
+        "WAITLISTED": 488
+      },
+      "errors": {},
+      "state": {
+        "orders": 500,
+        "outbox": 500,
+        "buckets": 48,
+        "overlaps": 0,
+        "confirmed": 12,
+        "waitlisted": 488
+      },
+      "correct": true
+    }
+  ],
+  "cleanup": "passed",
+  "workload": {
+    "requestCount": 500,
+    "levels": [
+      50,
+      100,
+      500
+    ],
+    "repeats": 1,
+    "closedLoop": true,
+    "identity": "synthetic signed STUDENT JWT; login and team creation excluded",
+    "logging": "INFO",
+    "serviceInstances": 1,
+    "jvmMaxHeapMiB": 512,
+    "datasourcePool": "Hikari default 10"
+  },
+  "database": {
+    "version": "8.0.45",
+    "isolation": "REPEATABLE-READ",
+    "maxConnections": 151,
+    "innodbLockWaitTimeout": 50
+  },
+  "finishedAt": "2026-10-16T07:35:11.965Z"
+}

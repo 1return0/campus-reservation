@@ -73,7 +73,7 @@ consistency. Two independent JVMs sharing real Redis returned 40 results with
 one instrumented loader execution in the first revision. See [that verification](docs/distributed-cache-rebuild-2026-10-14.md)
 and [the bounded-retry update and its current verification](docs/cache-rebuild-bounded-retry-2026-10-14.md).
 - Narrow custom Mapper SQL for capacity compare-and-update, interval overlap
-  and participant-conflict checks, and `FOR UPDATE SKIP LOCKED` waitlist claiming
+  and participant-conflict checks, and ordered `FOR UPDATE` lecture waitlist claiming
 - JUnit and Testcontainers for real MySQL integration tests
 
 ## Repository layout
