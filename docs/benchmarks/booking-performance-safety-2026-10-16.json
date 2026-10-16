@@ -1,0 +1,1167 @@
+{
+  "run": "c97f2558",
+  "schema": "campus_audit_d862d8aa45d1",
+  "mode": "safety",
+  "cases": [
+    {
+      "label": "same-key-lecture",
+      "requests": 20,
+      "concurrency": 20,
+      "seconds": 2.1710385,
+      "tps": 9.212181175045952,
+      "outcomes": {
+        "200:CONFIRMED": 11,
+        "409:active-reservation-exists": 9
+      },
+      "metrics": {
+        "clientMillis": {
+          "count": 20,
+          "mean": 1890.9118,
+          "p50": 1768.6005,
+          "p95": 2095.4549,
+          "p99": 2114.7253,
+          "max": 2114.7253
+        },
+        "serverMillis": {
+          "count": 20,
+          "mean": 1105.0894,
+          "p50": 940.7349,
+          "p95": 1364.3071,
+          "p99": 1382.5143,
+          "max": 1382.5143
+        },
+        "transactionToCommitMillis": {
+          "count": 11,
+          "mean": 432.7768,
+          "p50": 434.7167,
+          "p95": 472.5661,
+          "p99": 472.5661,
+          "max": 472.5661
+        },
+        "acquiredLockToCommitMillis": {
+          "count": 1,
+          "mean": 67.6967,
+          "p50": 67.6967,
+          "p95": 67.6967,
+          "p99": 67.6967,
+          "max": 67.6967
+        },
+        "lockSqlMillis": {
+          "count": 10,
+          "mean": 439.9061,
+          "p50": 506.542,
+          "p95": 607.7688,
+          "p99": 607.7688,
+          "max": 607.7688
+        },
+        "connectionAcquireMillis": {
+          "count": 20,
+          "mean": 215.7601,
+          "p50": 2.2959,
+          "p95": 454.6616,
+          "p99": 462.2836,
+          "max": 462.2836
+        },
+        "transactionBeginMillis": {
+          "count": 20,
+          "mean": 219.8078,
+          "p50": 9.9068,
+          "p95": 455.0923,
+          "p99": 464.0528,
+          "max": 464.0528
+        },
+        "commitMillis": {
+          "count": 11,
+          "mean": 0.8879,
+          "p50": 0.7512,
+          "p95": 2.5375,
+          "p99": 2.5375,
+          "max": 2.5375
+        },
+        "requireRoomMillis": {
+          "count": 0
+        },
+        "physicalSqlCount": {
+          "count": 20,
+          "mean": 3.15,
+          "p50": 1,
+          "p95": 5,
+          "p99": 8,
+          "max": 8
+        },
+        "logicalSelectCount": {
+          "count": 20,
+          "mean": 2.5,
+          "p50": 1,
+          "p95": 4,
+          "p99": 4,
+          "max": 4
+        },
+        "promoteMillis": {
+          "count": 0
+        },
+        "promotePhysicalSqlCount": {
+          "count": 0
+        },
+        "promoteLogicalSelectCount": {
+          "count": 0
+        },
+        "promoteCandidateRows": {
+          "count": 0
+        },
+        "transactionAfterBeginMillis": {
+          "count": 11,
+          "mean": 40.6495,
+          "p50": 7.0015,
+          "p95": 380.108,
+          "p99": 380.108,
+          "max": 380.108
+        },
+        "outerServerMillis": {
+          "count": 11,
+          "mean": 507.5816,
+          "p50": 506.0885,
+          "p95": 550.7896,
+          "p99": 550.7896,
+          "max": 550.7896
+        }
+      },
+      "byOutcome": {
+        "CONFIRMED": {
+          "clientMillis": {
+            "count": 11,
+            "mean": 1768.0591,
+            "p50": 1762.7229,
+            "p95": 1819.509,
+            "p99": 1819.509,
+            "max": 1819.509
+          },
+          "serverMillis": {
+            "count": 11,
+            "mean": 940.3584,
+            "p50": 940.5486,
+            "p95": 940.8052,
+            "p99": 940.8052,
+            "max": 940.8052
+          },
+          "transactionToCommitMillis": {
+            "count": 11,
+            "mean": 432.7768,
+            "p50": 434.7167,
+            "p95": 472.5661,
+            "p99": 472.5661,
+            "max": 472.5661
+          },
+          "acquiredLockToCommitMillis": {
+            "count": 1,
+            "mean": 67.6967,
+            "p50": 67.6967,
+            "p95": 67.6967,
+            "p99": 67.6967,
+            "max": 67.6967
+          },
+          "lockSqlMillis": {
+            "count": 1,
+            "mean": 9.8908,
+            "p50": 9.8908,
+            "p95": 9.8908,
+            "p99": 9.8908,
+            "max": 9.8908
+          },
+          "connectionAcquireMillis": {
+            "count": 11,
+            "mean": 390.8771,
+            "p50": 426.8613,
+            "p95": 462.2836,
+            "p99": 462.2836,
+            "max": 462.2836
+          },
+          "transactionBeginMillis": {
+            "count": 11,
+            "mean": 392.1273,
+            "p50": 427.3766,
+            "p95": 464.0528,
+            "p99": 464.0528,
+            "max": 464.0528
+          },
+          "commitMillis": {
+            "count": 11,
+            "mean": 0.8879,
+            "p50": 0.7512,
+            "p95": 2.5375,
+            "p99": 2.5375,
+            "max": 2.5375
+          },
+          "requireRoomMillis": {
+            "count": 0
+          },
+          "physicalSqlCount": {
+            "count": 11,
+            "mean": 1.6364,
+            "p50": 1,
+            "p95": 8,
+            "p99": 8,
+            "max": 8
+          },
+          "logicalSelectCount": {
+            "count": 11,
+            "mean": 1.2727,
+            "p50": 1,
+            "p95": 4,
+            "p99": 4,
+            "max": 4
+          },
+          "promoteMillis": {
+            "count": 0
+          },
+          "promotePhysicalSqlCount": {
+            "count": 0
+          },
+          "promoteLogicalSelectCount": {
+            "count": 0
+          },
+          "promoteCandidateRows": {
+            "count": 0
+          }
+        },
+        "active-reservation-exists": {
+          "clientMillis": {
+            "count": 9,
+            "mean": 2041.065,
+            "p50": 2044.9843,
+            "p95": 2114.7253,
+            "p99": 2114.7253,
+            "max": 2114.7253
+          },
+          "serverMillis": {
+            "count": 9,
+            "mean": 1306.4272,
+            "p50": 1305.9473,
+            "p95": 1382.5143,
+            "p99": 1382.5143,
+            "max": 1382.5143
+          },
+          "transactionToCommitMillis": {
+            "count": 0
+          },
+          "acquiredLockToCommitMillis": {
+            "count": 0
+          },
+          "lockSqlMillis": {
+            "count": 9,
+            "mean": 487.6856,
+            "p50": 527.8505,
+            "p95": 607.7688,
+            "p99": 607.7688,
+            "max": 607.7688
+          },
+          "connectionAcquireMillis": {
+            "count": 9,
+            "mean": 1.7283,
+            "p50": 1.7163,
+            "p95": 2.2,
+            "p99": 2.2,
+            "max": 2.2
+          },
+          "transactionBeginMillis": {
+            "count": 9,
+            "mean": 9.1951,
+            "p50": 9.085,
+            "p95": 9.9068,
+            "p99": 9.9068,
+            "max": 9.9068
+          },
+          "commitMillis": {
+            "count": 0
+          },
+          "requireRoomMillis": {
+            "count": 0
+          },
+          "physicalSqlCount": {
+            "count": 9,
+            "mean": 5,
+            "p50": 5,
+            "p95": 5,
+            "p99": 5,
+            "max": 5
+          },
+          "logicalSelectCount": {
+            "count": 9,
+            "mean": 4,
+            "p50": 4,
+            "p95": 4,
+            "p99": 4,
+            "max": 4
+          },
+          "promoteMillis": {
+            "count": 0
+          },
+          "promotePhysicalSqlCount": {
+            "count": 0
+          },
+          "promoteLogicalSelectCount": {
+            "count": 0
+          },
+          "promoteCandidateRows": {
+            "count": 0
+          }
+        }
+      },
+      "sqlStats": {
+        "ReservationOrderMapper.selectList": {
+          "calls": 39,
+          "totalMillis": 146.073,
+          "executionMillis": {
+            "count": 39,
+            "mean": 3.7455,
+            "p50": 1.8652,
+            "p95": 9.2381,
+            "p99": 9.2723,
+            "max": 9.2723
+          }
+        },
+        "ResourceSlotMapper.lockById": {
+          "calls": 10,
+          "totalMillis": 4399.0613,
+          "executionMillis": {
+            "count": 10,
+            "mean": 439.9061,
+            "p50": 506.542,
+            "p95": 607.7688,
+            "p99": 607.7688,
+            "max": 607.7688
+          }
+        },
+        "ReservationOrderMapper.insert": {
+          "calls": 10,
+          "totalMillis": 90.26820000000001,
+          "executionMillis": {
+            "count": 10,
+            "mean": 9.0268,
+            "p50": 4.0926,
+            "p95": 54.8221,
+            "p99": 54.8221,
+            "max": 54.8221
+          }
+        },
+        "ResourceSlotMapper.tryConsumeCapacity": {
+          "calls": 1,
+          "totalMillis": 2.3953,
+          "executionMillis": {
+            "count": 1,
+            "mean": 2.3953,
+            "p50": 2.3953,
+            "p95": 2.3953,
+            "p99": 2.3953,
+            "max": 2.3953
+          }
+        },
+        "ReservationOrderMapper.markConfirmed": {
+          "calls": 1,
+          "totalMillis": 4.2547,
+          "executionMillis": {
+            "count": 1,
+            "mean": 4.2547,
+            "p50": 4.2547,
+            "p95": 4.2547,
+            "p99": 4.2547,
+            "max": 4.2547
+          }
+        },
+        "ReservationOrderMapper.selectById": {
+          "calls": 1,
+          "totalMillis": 2.7582,
+          "executionMillis": {
+            "count": 1,
+            "mean": 2.7582,
+            "p50": 2.7582,
+            "p95": 2.7582,
+            "p99": 2.7582,
+            "max": 2.7582
+          }
+        },
+        "ReservationOutboxEventMapper.insert": {
+          "calls": 1,
+          "totalMillis": 2.465,
+          "executionMillis": {
+            "count": 1,
+            "mean": 2.465,
+            "p50": 2.465,
+            "p95": 2.465,
+            "p99": 2.465,
+            "max": 2.465
+          }
+        }
+      },
+      "state": {
+        "orders": 1,
+        "outbox": 1,
+        "roomBookings": 0,
+        "roomOverlaps": 0,
+        "waitingRooms": 0,
+        "waitingOrders": 0,
+        "confirmedRooms": 0,
+        "confirmedOrders": 1,
+        "negativeCapacity": 0
+      },
+      "lockSamplerStatus": "available",
+      "lockSamples": 20,
+      "maxObservedWaiters": 9,
+      "lockTables": [
+        "resource_slot/PRIMARY"
+      ],
+      "evidence": {
+        "file": "same-key-lecture-requests.json",
+        "sha256": "cc13db7853318ec3692b6d5292176a9a36c8e6683f042c0779ac4d1ccf7496bc"
+      },
+      "observedJdbcConnections": 10,
+      "sampledRowLockWait": {
+        "interpretation": "first-to-last observed blocked-sample span for hot resource PRIMARY lookups; not exact per-request wait; sampling gaps unmeasured",
+        "distinctStatements": 9,
+        "multipleSampleSpansMillis": {
+          "count": 9,
+          "mean": 456.7854,
+          "p50": 494.8993,
+          "p95": 588.243,
+          "p99": 588.243,
+          "max": 588.243
+        }
+      }
+    },
+    {
+      "label": "same-key-room",
+      "requests": 20,
+      "concurrency": 20,
+      "seconds": 0.4073813,
+      "tps": 49.09405512722356,
+      "outcomes": {
+        "409:study-team-already-booked": 9,
+        "200:CONFIRMED": 11
+      },
+      "metrics": {
+        "clientMillis": {
+          "count": 20,
+          "mean": 355.2884,
+          "p50": 356.478,
+          "p95": 396.5029,
+          "p99": 403.8923,
+          "max": 403.89230000000043
+        },
+        "serverMillis": {
+          "count": 20,
+          "mean": 336.1759,
+          "p50": 337.4978,
+          "p95": 374.9762,
+          "p99": 388.9852,
+          "max": 388.9852
+        },
+        "transactionToCommitMillis": {
+          "count": 11,
+          "mean": 170.6713,
+          "p50": 175.9241,
+          "p95": 196.2907,
+          "p99": 196.2907,
+          "max": 196.2907
+        },
+        "acquiredLockToCommitMillis": {
+          "count": 1,
+          "mean": 103.8947,
+          "p50": 103.8947,
+          "p95": 103.8947,
+          "p99": 103.8947,
+          "max": 103.8947
+        },
+        "lockSqlMillis": {
+          "count": 10,
+          "mean": 131.5572,
+          "p50": 135.7399,
+          "p95": 186.6844,
+          "p99": 186.6844,
+          "max": 186.6844
+        },
+        "connectionAcquireMillis": {
+          "count": 20,
+          "mean": 79.8691,
+          "p50": 2.5187,
+          "p95": 169.5433,
+          "p99": 179.302,
+          "max": 179.302
+        },
+        "transactionBeginMillis": {
+          "count": 20,
+          "mean": 86.6394,
+          "p50": 11.8509,
+          "p95": 178.2331,
+          "p99": 181.814,
+          "max": 181.814
+        },
+        "commitMillis": {
+          "count": 11,
+          "mean": 1.7201,
+          "p50": 1.477,
+          "p95": 2.8998,
+          "p99": 2.8998,
+          "max": 2.8998
+        },
+        "requireRoomMillis": {
+          "count": 10,
+          "mean": 133.3461,
+          "p50": 137.68,
+          "p95": 189.0787,
+          "p99": 189.0787,
+          "max": 189.0787
+        },
+        "physicalSqlCount": {
+          "count": 20,
+          "mean": 3.3,
+          "p50": 2,
+          "p95": 3,
+          "p99": 19,
+          "max": 19
+        },
+        "logicalSelectCount": {
+          "count": 20,
+          "mean": 3.4,
+          "p50": 2,
+          "p95": 4,
+          "p99": 12,
+          "max": 12
+        },
+        "promoteMillis": {
+          "count": 1,
+          "mean": 2.9335,
+          "p50": 2.9335,
+          "p95": 2.9335,
+          "p99": 2.9335,
+          "max": 2.9335
+        },
+        "promotePhysicalSqlCount": {
+          "count": 1,
+          "mean": 1,
+          "p50": 1,
+          "p95": 1,
+          "p99": 1,
+          "max": 1
+        },
+        "promoteLogicalSelectCount": {
+          "count": 1,
+          "mean": 1,
+          "p50": 1,
+          "p95": 1,
+          "p99": 1,
+          "max": 1
+        },
+        "promoteCandidateRows": {
+          "count": 1,
+          "mean": 0,
+          "p50": 0,
+          "p95": 0,
+          "p99": 0,
+          "max": 0
+        },
+        "transactionAfterBeginMillis": {
+          "count": 11,
+          "mean": 22.3541,
+          "p50": 12.5176,
+          "p95": 120.9773,
+          "p99": 120.9773,
+          "max": 120.97730000000001
+        },
+        "outerServerMillis": {
+          "count": 11,
+          "mean": 161.8457,
+          "p50": 160.8377,
+          "p95": 169.8557,
+          "p99": 169.8557,
+          "max": 169.8557
+        }
+      },
+      "byOutcome": {
+        "study-team-already-booked": {
+          "clientMillis": {
+            "count": 9,
+            "mean": 359.3785,
+            "p50": 356.8705,
+            "p95": 403.8923,
+            "p99": 403.8923,
+            "max": 403.89230000000043
+          },
+          "serverMillis": {
+            "count": 9,
+            "mean": 340.6479,
+            "p50": 337.4978,
+            "p95": 388.9852,
+            "p99": 388.9852,
+            "max": 388.9852
+          },
+          "transactionToCommitMillis": {
+            "count": 0
+          },
+          "acquiredLockToCommitMillis": {
+            "count": 0
+          },
+          "lockSqlMillis": {
+            "count": 9,
+            "mean": 145.4795,
+            "p50": 145.2318,
+            "p95": 186.6844,
+            "p99": 186.6844,
+            "max": 186.6844
+          },
+          "connectionAcquireMillis": {
+            "count": 9,
+            "mean": 1.7612,
+            "p50": 1.7686,
+            "p95": 2.5187,
+            "p99": 2.5187,
+            "max": 2.5187
+          },
+          "transactionBeginMillis": {
+            "count": 9,
+            "mean": 11.2554,
+            "p50": 11.1808,
+            "p95": 11.8509,
+            "p99": 11.8509,
+            "max": 11.8509
+          },
+          "commitMillis": {
+            "count": 0
+          },
+          "requireRoomMillis": {
+            "count": 9,
+            "mean": 147.2405,
+            "p50": 147.3329,
+            "p95": 189.0787,
+            "p99": 189.0787,
+            "max": 189.0787
+          },
+          "physicalSqlCount": {
+            "count": 9,
+            "mean": 3,
+            "p50": 3,
+            "p95": 3,
+            "p99": 3,
+            "max": 3
+          },
+          "logicalSelectCount": {
+            "count": 9,
+            "mean": 4,
+            "p50": 4,
+            "p95": 4,
+            "p99": 4,
+            "max": 4
+          },
+          "promoteMillis": {
+            "count": 0
+          },
+          "promotePhysicalSqlCount": {
+            "count": 0
+          },
+          "promoteLogicalSelectCount": {
+            "count": 0
+          },
+          "promoteCandidateRows": {
+            "count": 0
+          }
+        },
+        "CONFIRMED": {
+          "clientMillis": {
+            "count": 11,
+            "mean": 351.9419,
+            "p50": 356.478,
+            "p95": 375.8303,
+            "p99": 375.8303,
+            "max": 375.8302999999996
+          },
+          "serverMillis": {
+            "count": 11,
+            "mean": 332.517,
+            "p50": 340.0909,
+            "p95": 355.3704,
+            "p99": 355.3704,
+            "max": 355.3704
+          },
+          "transactionToCommitMillis": {
+            "count": 11,
+            "mean": 170.6713,
+            "p50": 175.9241,
+            "p95": 196.2907,
+            "p99": 196.2907,
+            "max": 196.2907
+          },
+          "acquiredLockToCommitMillis": {
+            "count": 1,
+            "mean": 103.8947,
+            "p50": 103.8947,
+            "p95": 103.8947,
+            "p99": 103.8947,
+            "max": 103.8947
+          },
+          "lockSqlMillis": {
+            "count": 1,
+            "mean": 6.2562,
+            "p50": 6.2562,
+            "p95": 6.2562,
+            "p99": 6.2562,
+            "max": 6.2562
+          },
+          "connectionAcquireMillis": {
+            "count": 11,
+            "mean": 143.7756,
+            "p50": 159.2109,
+            "p95": 179.302,
+            "p99": 179.302,
+            "max": 179.302
+          },
+          "transactionBeginMillis": {
+            "count": 11,
+            "mean": 148.3172,
+            "p50": 161.5706,
+            "p95": 181.814,
+            "p99": 181.814,
+            "max": 181.814
+          },
+          "commitMillis": {
+            "count": 11,
+            "mean": 1.7201,
+            "p50": 1.477,
+            "p95": 2.8998,
+            "p99": 2.8998,
+            "max": 2.8998
+          },
+          "requireRoomMillis": {
+            "count": 1,
+            "mean": 8.2967,
+            "p50": 8.2967,
+            "p95": 8.2967,
+            "p99": 8.2967,
+            "max": 8.2967
+          },
+          "physicalSqlCount": {
+            "count": 11,
+            "mean": 3.5455,
+            "p50": 2,
+            "p95": 19,
+            "p99": 19,
+            "max": 19
+          },
+          "logicalSelectCount": {
+            "count": 11,
+            "mean": 2.9091,
+            "p50": 2,
+            "p95": 12,
+            "p99": 12,
+            "max": 12
+          },
+          "promoteMillis": {
+            "count": 1,
+            "mean": 2.9335,
+            "p50": 2.9335,
+            "p95": 2.9335,
+            "p99": 2.9335,
+            "max": 2.9335
+          },
+          "promotePhysicalSqlCount": {
+            "count": 1,
+            "mean": 1,
+            "p50": 1,
+            "p95": 1,
+            "p99": 1,
+            "max": 1
+          },
+          "promoteLogicalSelectCount": {
+            "count": 1,
+            "mean": 1,
+            "p50": 1,
+            "p95": 1,
+            "p99": 1,
+            "max": 1
+          },
+          "promoteCandidateRows": {
+            "count": 1,
+            "mean": 0,
+            "p50": 0,
+            "p95": 0,
+            "p99": 0,
+            "max": 0
+          }
+        }
+      },
+      "sqlStats": {
+        "StudyRoomBookingMapper.selectList": {
+          "calls": 20,
+          "totalMillis": 69.54150000000001,
+          "executionMillis": {
+            "count": 20,
+            "mean": 3.4771,
+            "p50": 3.5144,
+            "p95": 6.073,
+            "p99": 6.5681,
+            "max": 6.5681
+          }
+        },
+        "ReservableResourceMapper.lockById": {
+          "calls": 10,
+          "totalMillis": 1315.5716000000002,
+          "executionMillis": {
+            "count": 10,
+            "mean": 131.5572,
+            "p50": 135.7399,
+            "p95": 186.6844,
+            "p99": 186.6844,
+            "max": 186.6844
+          }
+        },
+        "StudyTeamMapper.lockById": {
+          "calls": 10,
+          "totalMillis": 31.853,
+          "executionMillis": {
+            "count": 10,
+            "mean": 3.1853,
+            "p50": 2.8947,
+            "p95": 5.504,
+            "p99": 5.504,
+            "max": 5.504
+          }
+        },
+        "StudyTeamMemberMapper.acceptedForUpdate": {
+          "calls": 1,
+          "totalMillis": 4.0786,
+          "executionMillis": {
+            "count": 1,
+            "mean": 4.0786,
+            "p50": 4.0786,
+            "p95": 4.0786,
+            "p99": 4.0786,
+            "max": 4.0786
+          }
+        },
+        "StudyRoomOpenWindowMapper.containing": {
+          "calls": 1,
+          "totalMillis": 11.2045,
+          "executionMillis": {
+            "count": 1,
+            "mean": 11.2045,
+            "p50": 11.2045,
+            "p95": 11.2045,
+            "p99": 11.2045,
+            "max": 11.2045
+          }
+        },
+        "StudyRoomBookingMapper.waiting": {
+          "calls": 1,
+          "totalMillis": 1.5162,
+          "executionMillis": {
+            "count": 1,
+            "mean": 1.5162,
+            "p50": 1.5162,
+            "p95": 1.5162,
+            "p99": 1.5162,
+            "max": 1.5162
+          }
+        },
+        "StudyRoomBookingMapper.findConfirmedOverlapForUpdate": {
+          "calls": 1,
+          "totalMillis": 1.4492,
+          "executionMillis": {
+            "count": 1,
+            "mean": 1.4492,
+            "p50": 1.4492,
+            "p95": 1.4492,
+            "p99": 1.4492,
+            "max": 1.4492
+          }
+        },
+        "StudyRoomMemberBucketMapper.countMemberOverlap": {
+          "calls": 1,
+          "totalMillis": 1.8973,
+          "executionMillis": {
+            "count": 1,
+            "mean": 1.8973,
+            "p50": 1.8973,
+            "p95": 1.8973,
+            "p99": 1.8973,
+            "max": 1.8973
+          }
+        },
+        "StudyRoomBookingMapper.insert": {
+          "calls": 1,
+          "totalMillis": 2.5765,
+          "executionMillis": {
+            "count": 1,
+            "mean": 2.5765,
+            "p50": 2.5765,
+            "p95": 2.5765,
+            "p99": 2.5765,
+            "max": 2.5765
+          }
+        },
+        "StudyRoomBookingMemberMapper.insert": {
+          "calls": 1,
+          "totalMillis": 1.9931,
+          "executionMillis": {
+            "count": 1,
+            "mean": 1.9931,
+            "p50": 1.9931,
+            "p95": 1.9931,
+            "p99": 1.9931,
+            "max": 1.9931
+          }
+        },
+        "StudyRoomBookingMemberMapper.selectList": {
+          "calls": 13,
+          "totalMillis": 34.4716,
+          "executionMillis": {
+            "count": 13,
+            "mean": 2.6517,
+            "p50": 2.1946,
+            "p95": 5.1744,
+            "p99": 5.1744,
+            "max": 5.1744
+          }
+        },
+        "StudyRoomMemberBucketMapper.insertBucket": {
+          "calls": 4,
+          "totalMillis": 7.945500000000001,
+          "executionMillis": {
+            "count": 4,
+            "mean": 1.9864,
+            "p50": 1.9331,
+            "p95": 2.3108,
+            "p99": 2.3108,
+            "max": 2.3108
+          }
+        },
+        "StudyTeamMapper.markBooked": {
+          "calls": 1,
+          "totalMillis": 2.0181,
+          "executionMillis": {
+            "count": 1,
+            "mean": 2.0181,
+            "p50": 2.0181,
+            "p95": 2.0181,
+            "p99": 2.0181,
+            "max": 2.0181
+          }
+        },
+        "ReservationOutboxEventMapper.insert": {
+          "calls": 1,
+          "totalMillis": 2.1317,
+          "executionMillis": {
+            "count": 1,
+            "mean": 2.1317,
+            "p50": 2.1317,
+            "p95": 2.1317,
+            "p99": 2.1317,
+            "max": 2.1317
+          }
+        }
+      },
+      "state": {
+        "orders": 0,
+        "outbox": 1,
+        "roomBookings": 1,
+        "roomOverlaps": 0,
+        "waitingRooms": 0,
+        "waitingOrders": 0,
+        "confirmedRooms": 1,
+        "confirmedOrders": 0,
+        "negativeCapacity": 0
+      },
+      "lockSamplerStatus": "available",
+      "lockSamples": 6,
+      "maxObservedWaiters": 9,
+      "lockTables": [
+        "reservable_resource/PRIMARY"
+      ],
+      "evidence": {
+        "file": "same-key-room-requests.json",
+        "sha256": "46ec34c1c0f9d21975c6a7c27c858a65ec84375941fe0c56c8d4294fc7bc2338"
+      },
+      "observedJdbcConnections": 10,
+      "sampledRowLockWait": {
+        "interpretation": "first-to-last observed blocked-sample span for hot resource PRIMARY lookups; not exact per-request wait; sampling gaps unmeasured",
+        "distinctStatements": 9,
+        "multipleSampleSpansMillis": {
+          "count": 9,
+          "mean": 97.4058,
+          "p50": 95.4196,
+          "p95": 153.5733,
+          "p99": 153.5733,
+          "max": 153.5733
+        }
+      }
+    }
+  ],
+  "correctness": [
+    {
+      "name": "concurrent-idempotency-lecture",
+      "passed": false,
+      "evidence": {
+        "200:CONFIRMED": 11,
+        "409:active-reservation-exists": 9
+      }
+    },
+    {
+      "name": "concurrent-idempotency-room",
+      "passed": false,
+      "evidence": {
+        "409:study-team-already-booked": 9,
+        "200:CONFIRMED": 11
+      }
+    },
+    {
+      "name": "cancellation-fifo-lecture",
+      "passed": true,
+      "evidence": {
+        "cancelStatus": 200,
+        "statuses": [
+          {
+            "id": "2111048281311256578",
+            "status": "CANCELLED"
+          },
+          {
+            "id": "2111048281441280002",
+            "status": "CONFIRMED"
+          },
+          {
+            "id": "2111048281571303425",
+            "status": "WAITLISTED"
+          }
+        ],
+        "state": {
+          "orders": 3,
+          "outbox": 5,
+          "roomBookings": 0,
+          "roomOverlaps": 0,
+          "waitingRooms": 0,
+          "waitingOrders": 1,
+          "confirmedRooms": 0,
+          "confirmedOrders": 1,
+          "negativeCapacity": 0
+        }
+      }
+    },
+    {
+      "name": "maintenance-lecture",
+      "passed": true,
+      "evidence": {
+        "httpStatus": 200,
+        "state": {
+          "orders": 3,
+          "outbox": 7,
+          "roomBookings": 0,
+          "roomOverlaps": 0,
+          "waitingRooms": 0,
+          "waitingOrders": 0,
+          "confirmedRooms": 0,
+          "confirmedOrders": 0,
+          "negativeCapacity": 0
+        }
+      }
+    },
+    {
+      "name": "cancellation-fifo-room",
+      "passed": true,
+      "evidence": {
+        "cancelStatus": 200,
+        "statuses": [
+          {
+            "id": "2111048291117539330",
+            "status": "CANCELLED"
+          },
+          {
+            "id": "2111048291247562754",
+            "status": "CONFIRMED"
+          },
+          {
+            "id": "2111048291373391874",
+            "status": "WAITLISTED"
+          }
+        ],
+        "state": {
+          "orders": 0,
+          "outbox": 5,
+          "roomBookings": 3,
+          "roomOverlaps": 0,
+          "waitingRooms": 1,
+          "waitingOrders": 0,
+          "confirmedRooms": 1,
+          "confirmedOrders": 0,
+          "negativeCapacity": 0
+        }
+      }
+    },
+    {
+      "name": "maintenance-room",
+      "passed": true,
+      "evidence": {
+        "httpStatus": 200,
+        "state": {
+          "orders": 0,
+          "outbox": 7,
+          "roomBookings": 3,
+          "roomOverlaps": 0,
+          "waitingRooms": 0,
+          "waitingOrders": 0,
+          "confirmedRooms": 0,
+          "confirmedOrders": 0,
+          "negativeCapacity": 0
+        }
+      }
+    },
+    {
+      "name": "outbox-atomic-rollback-lecture",
+      "passed": true,
+      "evidence": {
+        "httpStatus": 403,
+        "unexpectedHttpStatus": true,
+        "rollbackCalls": 1,
+        "attemptedOutboxInsert": 1,
+        "state": {
+          "orders": 0,
+          "outbox": 0,
+          "roomBookings": 0,
+          "roomOverlaps": 0,
+          "waitingRooms": 0,
+          "waitingOrders": 0,
+          "confirmedRooms": 0,
+          "confirmedOrders": 0,
+          "negativeCapacity": 0
+        }
+      }
+    },
+    {
+      "name": "outbox-atomic-rollback-room",
+      "passed": true,
+      "evidence": {
+        "httpStatus": 403,
+        "unexpectedHttpStatus": true,
+        "rollbackCalls": 1,
+        "attemptedOutboxInsert": 1,
+        "state": {
+          "orders": 0,
+          "outbox": 0,
+          "roomBookings": 0,
+          "roomOverlaps": 0,
+          "waitingRooms": 0,
+          "waitingOrders": 0,
+          "confirmedRooms": 0,
+          "confirmedOrders": 0,
+          "negativeCapacity": 0
+        }
+      }
+    }
+  ],
+  "startedAt": "2026-10-16T10:55:00.634Z",
+  "instrumentation": "test-only ByteBuddy private-method timings + MyBatis logical vs physical SQL + read-only P_S sampler; no production patch",
+  "admission": "disabled",
+  "pool": "Hikari default 10",
+  "serviceInstances": 1,
+  "finishedAt": "2026-10-16T10:55:14.990Z",
+  "auditExecution": {
+    "runnerFinishedNormally": true,
+    "performanceCases": 0,
+    "note": "Runner completed; correctness findings must still be inspected."
+  }
+}

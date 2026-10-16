@@ -33,6 +33,12 @@ import java.time.LocalDateTime;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * All mutations of one room's schedule/occupancy serialize on reservable_resource.
@@ -220,7 +226,7 @@ public class StudyRoomServiceImpl implements StudyRoomService {
         // A concurrent replay may have booked a different room while this
         // request waited for the team lock; inspect the key again before
         // interpreting BOOKED as a conflicting new request.
-        replay = byKey(principal.userId(), key);
+        replay = bookingMapper.findReplayFresh(principal.userId(), key);
         if (replay != null) { return replay(request, replay); }
         if (team == null || !principal.userId().equals(team.getLeaderReference())) {
             throw notFound("study-team-not-found");
@@ -273,7 +279,7 @@ public class StudyRoomServiceImpl implements StudyRoomService {
     }
 
     @Override
-    @Transactional
+    @Transactional(isolation = Isolation.READ_COMMITTED)
     @PreAuthorize("hasRole('STUDENT')")
     public StudyRoomBookingResponse cancel(Long bookingId, CampusAuthenticatedPrincipal principal) {
         requireStudent(principal);
@@ -387,7 +393,7 @@ public class StudyRoomServiceImpl implements StudyRoomService {
     }
 
     @Override
-    @Transactional
+    @Transactional(isolation = Isolation.READ_COMMITTED)
     @PreAuthorize("hasAnyRole('SUPPORT_STAFF','ADMIN')")
     public StudyRoomBookingResponse markNoShow(Long bookingId, String operator) {
         StudyRoomBookingEntity initial = requireBooking(bookingId);
@@ -410,7 +416,7 @@ public class StudyRoomServiceImpl implements StudyRoomService {
     }
 
     @Override
-    @Transactional
+    @Transactional(isolation = Isolation.READ_COMMITTED)
     public int autoMarkNoShows(int batchSize) {
         if (batchSize < 1 || batchSize > 500) {
             throw new IllegalArgumentException("no-show batch size must be between 1 and 500");
@@ -434,21 +440,60 @@ public class StudyRoomServiceImpl implements StudyRoomService {
     }
 
     private void promoteWaiting(Long resourceId) {
+        // Keep the existing ordered, locking queue read and per-interval current reads.
+        // Only eliminate repeated reads; do not cap/skip the FIFO queue.
+        Map<BookingInterval, Boolean> initiallyFree = new HashMap<>();
+        List<StudyRoomBookingEntity> eligible = new ArrayList<>();
         for (StudyRoomBookingEntity candidate : bookingMapper.waiting(resourceId, now())) {
-            if (windowMapper.containing(resourceId, candidate.getStartsAt(), candidate.getEndsAt()) == null
-                    || bookingMapper.findConfirmedOverlapForUpdate(resourceId, candidate.getStartsAt(),
-                    candidate.getEndsAt()) != null) { continue; }
-            List<StudyRoomBookingMemberEntity> members = participants(candidate.getId());
-            if (members.stream().anyMatch(member -> bucketMapper.countMemberOverlap(
-                    member.getStudentNumber(), candidate.getStartsAt(), candidate.getEndsAt()) != 0)) {
-                continue;
+            BookingInterval interval = interval(candidate);
+            if (initiallyFree.computeIfAbsent(interval, key ->
+                    windowMapper.containing(resourceId, key.startsAt(), key.endsAt()) != null
+                    && bookingMapper.findConfirmedOverlapForUpdate(resourceId, key.startsAt(), key.endsAt()) == null)) {
+                eligible.add(candidate);
             }
+        }
+        if (eligible.isEmpty()) { return; }
+        Map<Long, List<StudyRoomBookingMemberEntity>> memberRows = new HashMap<>();
+        Set<Long> conflicts = new HashSet<>();
+        // Bound SQL parameter lists while retaining ALL candidates in the original FIFO order.
+        for (int offset = 0; offset < eligible.size(); offset += 200) {
+            List<Long> ids = eligible.subList(offset, Math.min(offset + 200, eligible.size()))
+                    .stream().map(StudyRoomBookingEntity::getId).toList();
+            memberRows.putAll(bookingMemberMapper.forBookings(ids).stream()
+                    .collect(Collectors.groupingBy(StudyRoomBookingMemberEntity::getBookingId)));
+            conflicts.addAll(bucketMapper.conflictingBookings(ids));
+        }
+        List<BookingInterval> promotedIntervals = new ArrayList<>();
+        Map<String, List<BookingInterval>> promotedMembers = new HashMap<>();
+        for (StudyRoomBookingEntity candidate : eligible) {
+            BookingInterval interval = interval(candidate);
+            List<StudyRoomBookingMemberEntity> members = memberRows.getOrDefault(candidate.getId(), List.of());
+            if (members.isEmpty()) { throw conflict("study-room-booking-members-missing"); }
+            if (conflicts.contains(candidate.getId()) || promotedIntervals.stream().anyMatch(interval::overlaps)
+                    || members.stream().anyMatch(member -> promotedMembers
+                    .getOrDefault(member.getStudentNumber(), List.of()).stream().anyMatch(interval::overlaps))) { continue; }
+            // A concurrent booking in another room can still win after the bulk read.
+            // Keep the original unique-key claim and whole-transaction rollback semantics.
             claimBuckets(candidate, members);
             if (bookingMapper.promote(candidate.getId()) != 1) { throw conflict("study-room-promotion-conflict"); }
             candidate.setStatus(StudyRoomBookingStatus.CONFIRMED);
             outboxService.recordStudyRoomStatusChanged(candidate, members,
                     ReservationEventType.STUDY_ROOM_PROMOTED);
+            promotedIntervals.add(interval);
+            for (StudyRoomBookingMemberEntity member : members) {
+                promotedMembers.computeIfAbsent(member.getStudentNumber(), key -> new ArrayList<>()).add(interval);
+            }
         }
+    }
+
+    private record BookingInterval(LocalDateTime startsAt, LocalDateTime endsAt) {
+        boolean overlaps(BookingInterval other) {
+            return startsAt.isBefore(other.endsAt) && endsAt.isAfter(other.startsAt);
+        }
+    }
+
+    private static BookingInterval interval(StudyRoomBookingEntity booking) {
+        return new BookingInterval(booking.getStartsAt(), booking.getEndsAt());
     }
 
     private List<StudyRoomBookingEntity> activeInWindow(StudyRoomOpenWindowEntity window) {

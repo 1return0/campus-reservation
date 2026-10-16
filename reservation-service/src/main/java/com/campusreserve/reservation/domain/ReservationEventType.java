@@ -1,6 +1,7 @@
 package com.campusreserve.reservation.domain;
 
 public enum ReservationEventType {
+    LECTURE_RESERVATION_REQUESTED,
     RESERVATION_CONFIRMED,
     RESERVATION_WAITLISTED,
     RESERVATION_CANCELLED,

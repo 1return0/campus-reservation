@@ -6,10 +6,16 @@ import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Update;
 import org.apache.ibatis.annotations.Select;
+import org.apache.ibatis.annotations.Options;
 import java.util.List;
 
 @Mapper
 public interface ReservationOrderMapper extends BaseMapper<ReservationOrderEntity> {
+
+    /** Re-read after the existing slot lock; bypass the earlier cached miss. No additional lock. */
+    @Select("SELECT * FROM reservation_order WHERE requester_reference = #{requester} AND idempotency_key = #{key}")
+    @Options(useCache = false, flushCache = Options.FlushCachePolicy.TRUE)
+    ReservationOrderEntity findReplayFresh(@Param("requester") String requester, @Param("key") String key);
 
     @Select("SELECT * FROM reservation_order WHERE id = #{reservationId} FOR UPDATE")
     ReservationOrderEntity lockById(@Param("reservationId") Long reservationId);

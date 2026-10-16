@@ -30,6 +30,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.annotation.Isolation;
 
 import java.time.Clock;
 import java.time.LocalDateTime;
@@ -51,21 +52,49 @@ public class ReservationServiceImpl implements ReservationService {
     private final Clock reservationClock;
     private final ReservationAdmissionGuard reservationAdmissionGuard;
 
+    @org.springframework.beans.factory.annotation.Value("${campus-reserve.lecture-async.enabled:false}")
+    private boolean lectureAsyncEnabled;
+
     @Override
-    @Transactional
+    @Transactional(isolation = Isolation.READ_COMMITTED)
     @PreAuthorize("hasRole('STUDENT')")
     public ReservationResponse reserve(Long slotId, String requesterReference, String idempotencyKey) {
+        return reserveInternal(slotId, requesterReference, idempotencyKey, true);
+    }
+
+    @Override
+    @Transactional(isolation = Isolation.READ_COMMITTED)
+    @PreAuthorize("hasAuthority('LECTURE_QUEUE_WORKER')")
+    public ReservationResponse reserveAccepted(Long slotId, String requesterReference, String idempotencyKey) {
+        return reserveInternal(slotId, requesterReference, idempotencyKey, false);
+    }
+
+    private ReservationResponse reserveInternal(Long slotId, String requesterReference, String idempotencyKey, boolean applyAdmission) {
         ReservationOrderEntity replay = findByIdempotency(requesterReference, idempotencyKey);
         if (replay != null) {
             return toResponse(replay);
         }
 
+        if (applyAdmission && lectureAsyncEnabled) {
+            ResourceSlotEntity candidate = resourceSlotMapper.selectById(slotId);
+            ReservableResourceEntity resource = candidate == null ? null : resourceMapper.selectById(candidate.getResourceId());
+            if (resource != null && "LECTURE".equals(resource.getResourceType())) {
+                // Do not let the old endpoint jump ahead of already accepted asynchronous requests.
+                throw conflict("lecture-async-reservation-required");
+            }
+        }
+
         // Retries with the same idempotency key return above without consuming
         // admission quota. New writes can be shed before the capacity update;
         // the replay lookup above has already read MySQL.
-        reservationAdmissionGuard.requireAdmission(slotId, requesterReference);
+        if (applyAdmission) reservationAdmissionGuard.requireAdmission(slotId, requesterReference);
 
-        ResourceSlotEntity slot = requireBookableOpenSlot(slotId);
+        // The same slot row lock still excludes maintenance and other mutations.
+        ResourceSlotEntity slot = resourceSlotMapper.lockById(slotId);
+        // READ_COMMITTED plus an uncached re-read observes the winner after waiting for the slot.
+        replay = reservationOrderMapper.findReplayFresh(requesterReference, idempotencyKey);
+        if (replay != null) { return toResponse(replay); }
+        requireBookableOpenSlot(slot);
         ReservationOrderEntity activeReservation = reservationOrderMapper.selectOne(
                 new LambdaQueryWrapper<ReservationOrderEntity>()
                         .eq(ReservationOrderEntity::getSlotId, slotId)
@@ -87,7 +116,7 @@ public class ReservationServiceImpl implements ReservationService {
         try {
             reservationOrderMapper.insert(reservation);
         } catch (DuplicateKeyException exception) {
-            ReservationOrderEntity existing = findByIdempotency(requesterReference, idempotencyKey);
+            ReservationOrderEntity existing = reservationOrderMapper.findReplayFresh(requesterReference, idempotencyKey);
             if (existing != null) {
                 return toResponse(existing);
             }
@@ -306,10 +335,7 @@ public class ReservationServiceImpl implements ReservationService {
         return markedCount;
     }
 
-    private ResourceSlotEntity requireBookableOpenSlot(Long slotId) {
-        // Current read locks the slot through the booking transaction. A
-        // concurrent admin cancellation cannot miss a newly created order.
-        ResourceSlotEntity slot = resourceSlotMapper.lockById(slotId);
+    private ResourceSlotEntity requireBookableOpenSlot(ResourceSlotEntity slot) {
         if (slot == null || slot.getStatus() != SlotStatus.OPEN) {
             throw notFound("slot-not-open");
         }

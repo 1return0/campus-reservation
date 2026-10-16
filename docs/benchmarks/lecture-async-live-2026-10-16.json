@@ -1,0 +1,15 @@
+{
+  "checks" : [ "committed FIFO, competing workers, duplicate wakeup, no oversell", "idempotent accepted replay and owner-isolated polling", "20 concurrent same-key submissions all 202, one request/order", "acceptance Outbox failure rolls back request; HTTP 500, never 202/403", "worker DB failure atomically rolls back capacity/order/notification; head retry preserves FIFO", "original cancellation FIFO promotion and notification Outbox preserved", "maintenance rejection persists FAILED without reservation side effects", "HTTP accepted while original resource_slot lock was still held", "real Redis + 500 accepted + real Outbox/Rabbit confirms + 2 consumers: first 20 confirmed, next 480 waitlisted, 500 notification events atomically present", "real malformed MQ message enters isolated DLQ without automatic retry loop", "durable PROCESSING scanner republishes a lost wakeup through Outbox", "real broker Return retains pending Outbox/request; restored routing retries successfully", "confirmed-publish crash window and expired-lease duplicate delivery create one order/notification event" ],
+  "scope" : "direct Reservation HTTP + real isolated MySQL/Redis/Rabbit; no Gateway/notification-consumer throughput claim",
+  "measurements" : {
+    "acceptWhileOriginalSlotLockedMillis" : 32.414,
+    "accept500Concurrent500" : {
+      "tps" : 70.55636473514431,
+      "p50Millis" : 4056.4477,
+      "p99Millis" : 6769.4289,
+      "p95Millis" : 6577.9379,
+      "requests" : 500
+    },
+    "finish500AfterConsumerStartMillis" : 11205.7866
+  }
+}

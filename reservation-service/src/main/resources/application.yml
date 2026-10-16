@@ -38,6 +38,12 @@ spring:
       timeout: 1s
 
 campus-reserve:
+  lecture-async:
+    # Opt-in. Keep Outbox + Redis admission enabled; drain PROCESSING before rollback.
+    enabled: ${LECTURE_ASYNC_ENABLED:false}
+    exchange: ${LECTURE_COMMAND_EXCHANGE:campus.lecture.commands}
+    queue: ${LECTURE_COMMAND_QUEUE:campus.lecture.reserve}
+    recovery-delay-millis: 5000
   time-zone: ${CAMPUS_TIME_ZONE:Asia/Shanghai}
   security:
     jwt:

@@ -6,12 +6,17 @@ import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
 import org.apache.ibatis.annotations.Update;
+import org.apache.ibatis.annotations.Options;
 
 import java.time.LocalDateTime;
 import java.util.List;
 
 @Mapper
 public interface StudyRoomBookingMapper extends BaseMapper<StudyRoomBookingEntity> {
+    @Select("SELECT * FROM study_room_booking WHERE leader_reference = #{leader} AND idempotency_key = #{key}")
+    @Options(useCache = false, flushCache = Options.FlushCachePolicy.TRUE)
+    StudyRoomBookingEntity findReplayFresh(@Param("leader") String leader, @Param("key") String key);
+
     /** Locking/current read is essential under MySQL REPEATABLE READ. */
     @Select("""
             SELECT id FROM study_room_booking

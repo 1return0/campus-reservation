@@ -8,9 +8,17 @@ import org.apache.ibatis.annotations.Select;
 import org.apache.ibatis.annotations.Update;
 
 import java.time.LocalDateTime;
+import java.util.List;
+import org.apache.ibatis.annotations.Options;
 
 @Mapper
 public interface StudyRoomBookingMemberMapper extends BaseMapper<StudyRoomBookingMemberEntity> {
+    @Select({"<script>", "SELECT * FROM study_room_booking_member WHERE booking_id IN",
+            "<foreach collection='ids' item='id' open='(' separator=',' close=')'>#{id}</foreach>",
+            "ORDER BY booking_id, id", "</script>"})
+    @Options(useCache = false, flushCache = Options.FlushCachePolicy.TRUE)
+    List<StudyRoomBookingMemberEntity> forBookings(@Param("ids") List<Long> ids);
+
     @Update("""
             UPDATE study_room_booking_member
             SET checked_in_at = #{checkedInAt}, checked_in_by_reference = #{operator}
