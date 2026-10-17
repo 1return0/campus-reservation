@@ -169,3 +169,45 @@ second V2 cursor; the remaining planned lessons are in Week 4.
 
 Before each new lesson, read this file and move only the active cursor line
 after that lesson is complete.
+
+## Performance and asynchronous-booking supplement (2026-10-16)
+
+Requested as three compact developer-focused lessons. This supplement does
+not overwrite the four-week cursor or mark its deferred reviews completed.
+Read teaching-rules.md and project-layout.md before each lesson. Teach the
+actual call chain AND core code, then ask three taught-scope questions;
+grade answers before advancing. Do not turn this into another test-framework
+or multi-round performance-audit course.
+
+| Lesson | Business question and core code |
+| --- | --- |
+| 1 - Round-one correctness | Why can concurrent same-key retries incorrectly return 409, and why must a DB failure not become 403? Walk synchronous Controller -> reserve -> slot lock -> findReplayFresh, READ_COMMITTED/MyBatis cache boundaries, the study-room fresh-replay counterpart, and scoped DataAccessException advice. |
+| 2 - Round-one N+1 reduction | Walk cancellation -> promoteWaiting -> ordered queue/current interval checks -> batched member and occupancy reads -> in-memory checks -> unique bucket claim -> promotion and notification Outbox. Explain batching by 200, oldest eligible semantics, rollback and what 1003-to-9 SQL evidence actually covers. |
+| 3 - Retired async experiment | Cancelled at the learner's request on 2026-10-17. Both async implementations have been removed; lecture booking returns the synchronous CONFIRMED/WAITLISTED result. No async lesson answers are required. |
+
+Supplemental Lesson 1 completed and graded **3/3**. Clarification: lecture uses
+reservationOrderMapper.findReplayFresh; study room uses bookingMapper.findReplayFresh.
+Supplemental Lesson 2 completed and graded **3/3**. Clarified computeIfAbsent,
+method references and nested anyMatch with ordinary-loop equivalents.
+Supplemental Lesson 3 is **retired, not completed or awaiting answers**. The learner
+requested restoration to synchronous lecture booking. Keep Lessons 1 and 2 and
+their round-one fixes. Do not teach request tables, a lecture consumer Inbox,
+reserveAccepted, or 202 polling as current implemented functionality.
+The existing Week 4 Day 7 review cursor remains deferred, not completed.
+
+Historical V1 evidence only: regular package regression 118 passed / 2 skipped;
+old async live checks passed. Do not reuse those as V2 validation. Original isolated safety regression was 12/13, with a
+study-room maintenance notification-count failure documented in
+lecture-async-delivery-2026-10-16.md. Do not claim all integration checks pass.
+
+Historical simplified version (now removed, 2026-10-17): ordinary regression 125 passed / 2 skipped;
+isolated real MySQL/Redis/RabbitMQ command pipeline passed, including 500 concurrent
+HTTP acceptances (20 confirmed / 480 waitlisted), Inbox deduplication, rollback,
+bounded retry/DLQ and explicit replay. HTTP acceptance P95=1691.96ms is not final
+booking latency or a stable A/B speedup. See lecture-async-simplification-2026-10-17.md.
+Original database was not migrated; V13 ran only in this test's disposable schema.
+
+Current runtime: synchronous lecture booking restored; only result notifications
+remain asynchronous. Restoration snapshot and current checks are documented in
+lecture-sync-restoration-2026-10-17.md. The next original lesson remains Week 4
+Day 7 Review A (deferred); no new supplemental lesson was introduced or graded.

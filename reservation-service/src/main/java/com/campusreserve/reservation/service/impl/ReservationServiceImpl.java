@@ -52,42 +52,19 @@ public class ReservationServiceImpl implements ReservationService {
     private final Clock reservationClock;
     private final ReservationAdmissionGuard reservationAdmissionGuard;
 
-    @org.springframework.beans.factory.annotation.Value("${campus-reserve.lecture-async.enabled:false}")
-    private boolean lectureAsyncEnabled;
-
     @Override
     @Transactional(isolation = Isolation.READ_COMMITTED)
     @PreAuthorize("hasRole('STUDENT')")
     public ReservationResponse reserve(Long slotId, String requesterReference, String idempotencyKey) {
-        return reserveInternal(slotId, requesterReference, idempotencyKey, true);
-    }
-
-    @Override
-    @Transactional(isolation = Isolation.READ_COMMITTED)
-    @PreAuthorize("hasAuthority('LECTURE_QUEUE_WORKER')")
-    public ReservationResponse reserveAccepted(Long slotId, String requesterReference, String idempotencyKey) {
-        return reserveInternal(slotId, requesterReference, idempotencyKey, false);
-    }
-
-    private ReservationResponse reserveInternal(Long slotId, String requesterReference, String idempotencyKey, boolean applyAdmission) {
         ReservationOrderEntity replay = findByIdempotency(requesterReference, idempotencyKey);
         if (replay != null) {
             return toResponse(replay);
         }
 
-        if (applyAdmission && lectureAsyncEnabled) {
-            ResourceSlotEntity candidate = resourceSlotMapper.selectById(slotId);
-            ReservableResourceEntity resource = candidate == null ? null : resourceMapper.selectById(candidate.getResourceId());
-            if (resource != null && "LECTURE".equals(resource.getResourceType())) {
-                // Do not let the old endpoint jump ahead of already accepted asynchronous requests.
-                throw conflict("lecture-async-reservation-required");
-            }
-        }
-
         // Retries with the same idempotency key return above without consuming
         // admission quota. New writes can be shed before the capacity update;
         // the replay lookup above has already read MySQL.
-        if (applyAdmission) reservationAdmissionGuard.requireAdmission(slotId, requesterReference);
+        reservationAdmissionGuard.requireAdmission(slotId, requesterReference);
 
         // The same slot row lock still excludes maintenance and other mutations.
         ResourceSlotEntity slot = resourceSlotMapper.lockById(slotId);

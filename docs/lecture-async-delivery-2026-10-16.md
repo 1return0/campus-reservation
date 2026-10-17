@@ -1,5 +1,8 @@
 # 讲座异步预约 MVP 交付记录
 
+> 历史记录：本文描述旧版序号/队首方案及当时测试，不是当前实现。
+> 异步方案已全部撤回；当前见 [同步恢复记录](lecture-sync-restoration-2026-10-17.md)。
+
 ## 范围与保存
 
 - 分支：`feature/lecture-async-reservations`；HEAD 仍为 `e1cf801debf6fa485bb7a1eb7297971468155f17`，未 commit、未 push。

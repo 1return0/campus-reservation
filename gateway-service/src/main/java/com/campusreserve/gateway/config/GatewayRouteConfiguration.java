@@ -29,7 +29,6 @@ public class GatewayRouteConfiguration {
                 .route("reservation-service-api", route -> route
                         .path(
                                 "/api/v1/reservations/**",
-                                "/api/v1/reservation-requests/**",
                                 "/api/v1/study-teams/**",
                                 "/api/v1/study-rooms/**",
                                 "/api/v1/resources/**",

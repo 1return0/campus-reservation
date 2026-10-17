@@ -17,11 +17,11 @@ remain separate from study rooms.
 
 ## Business closure
 
-Lecture booking also has an **opt-in asynchronous API**: durable MySQL request +
-existing Outbox, RabbitMQ wakeups, database-ordered per-slot execution and
-owner-scoped result polling. Study rooms remain synchronous. The existing
-synchronous lecture endpoint is retained for a drained rollback. See
-[configuration, API, ordering and recovery](docs/lecture-async-reservation.md).
+Lecture booking uses the synchronous API: Redis admission followed by the MySQL
+slot-locked reservation transaction returns CONFIRMED or WAITLISTED directly.
+Only result notifications are asynchronous through the existing Outbox/RabbitMQ/
+Notification Inbox chain. Study rooms remain synchronous. The experimental
+asynchronous booking API has been retired; see [restoration notes](docs/lecture-sync-restoration-2026-10-17.md).
 
 ```text
 Gateway validates the bearer token and routes the request

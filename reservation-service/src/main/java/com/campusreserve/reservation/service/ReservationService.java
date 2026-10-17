@@ -12,9 +12,6 @@ public interface ReservationService {
 
     ReservationResponse reserve(Long slotId, String requesterReference, String idempotencyKey);
 
-    /** Trusted durable-queue worker only; admission has already completed. */
-    ReservationResponse reserveAccepted(Long slotId, String requesterReference, String idempotencyKey);
-
     CancellationResponse cancel(Long reservationId, String requesterReference);
 
     ReservationResponse getById(Long reservationId, String requesterReference);

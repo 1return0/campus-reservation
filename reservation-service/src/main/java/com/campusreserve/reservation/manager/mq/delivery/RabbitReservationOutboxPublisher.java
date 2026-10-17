@@ -1,7 +1,6 @@
 package com.campusreserve.reservation.manager.mq.delivery;
 
 import com.campusreserve.reservation.dao.entity.ReservationOutboxEventEntity;
-import com.campusreserve.reservation.domain.ReservationEventType;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import org.springframework.amqp.core.MessageProperties;
@@ -26,9 +25,6 @@ public class RabbitReservationOutboxPublisher implements ReservationOutboxPublis
     @Value("${campus-reserve.messaging.exchange:campus.reservation.events}")
     private String exchange;
 
-    @Value("${campus-reserve.lecture-async.exchange:campus.lecture.commands}")
-    private String lectureExchange;
-
     @Value("${campus-reserve.outbox.delivery.confirm-timeout-millis:3000}")
     private long confirmTimeoutMillis;
 
@@ -41,9 +37,8 @@ public class RabbitReservationOutboxPublisher implements ReservationOutboxPublis
     public void publish(ReservationOutboxEventEntity event) {
         CorrelationData correlationData = new CorrelationData(event.getEventId());
         rabbitTemplate.convertAndSend(
-                event.getEventType() == ReservationEventType.LECTURE_RESERVATION_REQUESTED ? lectureExchange : exchange,
-                event.getEventType() == ReservationEventType.LECTURE_RESERVATION_REQUESTED ? "lecture.reserve" :
-                        "reservation." + event.getEventType().name().toLowerCase(),
+                exchange,
+                "reservation." + event.getEventType().name().toLowerCase(),
                 event.getPayload(),
                 message -> {
                     MessageProperties properties = message.getMessageProperties();

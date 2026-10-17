@@ -1,99 +1,140 @@
-# Lecture asynchronous reservation (opt-in MVP)
+# Lecture asynchronous reservation — simplified request commands
 
-## Scope and compatibility
+> RETIRED 2026-10-17: the learner requested restoration to synchronous booking.
+> This file is historical design documentation, NOT current endpoints or code.
+> Both async implementations and their dedicated migrations have been removed.
+> See [current restoration](lecture-sync-restoration-2026-10-17.md).
 
-Only lecture fixed-slot booking is asynchronous. Study-room booking/promotion is unchanged. `LECTURE_ASYNC_ENABLED=false` remains the default; no development/production credentials or live service configuration have been changed.
+This described the simplified experiment. Reports dated 2026-10-16 describe the
+superseded sequence/head-scanning implementation; their measurements are not
+measurements of this version. Study-room code and round-one fixes are unchanged.
 
-Enable **all** of the following on upgraded Reservation instances:
+## API and feature switches
 
-```properties
-LECTURE_ASYNC_ENABLED=true
-OUTBOX_DELIVERY_ENABLED=true
-RESERVATION_ADMISSION_RATE_LIMIT_ENABLED=true
-```
+Opt in with `LECTURE_ASYNC_ENABLED=true`, `OUTBOX_DELIVERY_ENABLED=true`, and
+`RESERVATION_ADMISSION_RATE_LIMIT_ENABLED=true`. Existing connection settings
+and production admission thresholds are unchanged. The default remains disabled.
 
-Use the existing RabbitMQ/Redis/MySQL connection settings. Default admission quotas are unchanged. Async submission refuses with 503 if required switches are missing; do not replace the real admission guard with a no-op in production. The Redis guard remains fail-closed when enabled.
-
-## API
-
-```http
-POST /api/v1/slots/{slotId}/reservation-requests
-Authorization: Bearer <student JWT>
-Idempotency-Key: <8-80 letters/digits/_/->
-```
-
-No browser-supplied owner ID. HTTP **202**, after the persistence transaction commits:
+`POST /api/v1/slots/{slotId}/reservation-requests` requires a student JWT and an
+8–80 character `Idempotency-Key` (letters, digits, underscore, hyphen).
+The owner is taken from the authenticated principal, never from the body.
+After the acceptance transaction commits, HTTP 202 and Location are returned:
 
 ```json
 {"code":200,"message":"success","data":{"requestId":"<UUID>","status":"PROCESSING","reservationId":null,"failureCode":null}}
 ```
 
-`Location: /api/v1/reservation-requests/{requestId}`. POST replays return the same request ID and its stored status (possibly already final). Reusing a key for another slot returns 409. An accepted request is not yet a confirmed reservation.
+`GET /api/v1/reservation-requests/{requestId}` returns the owner's durable
+PROCESSING / CONFIRMED / WAITLISTED / FAILED result; another owner gets 404.
+Replaying POST with the same owner/key returns the same request and stored
+status (which may already be final); using that key for another slot is 409.
+202 means accepted, not booked. Poll with an interval/backoff. Later cancellation,
+promotion and fulfilment are read through the existing reservation APIs: the
+request row preserves the original execution outcome, not every later order change.
 
-```http
-GET /api/v1/reservation-requests/{requestId}
-Authorization: Bearer <same student JWT>
-```
+## Actual execution order
 
-Returns PROCESSING, CONFIRMED, WAITLISTED or FAILED; another student's request returns 404. `reservationId` links to the existing reservation APIs. The final request outcome is the original booking result; subsequent cancellation/promotion/fulfilment is queried through the reservation API. Clients should poll with a modest interval/backoff, not tight loops.
+1. `LectureReservationRequestServiceImpl.submit`: fast replay lookup, feature
+   checks, existing Redis Lua admission; no Redis inventory deduction.
+2. `LectureRequestPersistence.accept`: validate slot/resource using ordinary
+   reads, insert request and `LectureRequestOutbox.recordRequested` in one
+   READ_COMMITTED transaction. No sequence allocation or resource-slot lock in
+   HTTP acceptance. A duplicate-key loser re-reads after its transaction rolls back.
+3. Commit before returning 202. On uncertain commit, return sanitized 500;
+   the caller must retry the SAME key to find whether acceptance committed.
+4. Existing Outbox scheduler leases and publishes to `campus.lecture.commands`,
+   route `lecture.reserve`. Confirm ACK AND absence of a mandatory Return are
+   required before marking PUBLISHED. Its leasing/retry logic is unchanged.
+5. The JSON command is `{schemaVersion:2,eventId:<UUID>,requestId:<UUID>}`.
+   `eventId` is exactly the Outbox eventId, not regenerated per delivery.
+   The message does not supply a user, JWT or mutable booking parameters.
+6. `LectureReservationListener` deserializes and validates; the worker processes
+   that specific request, not a queue head. It temporarily installs the internal
+   `LECTURE_QUEUE_WORKER` authority and restores the old security context in finally.
+7. A worker transaction locks original resource_slot first, then the request row.
+   It inserts the eventId into `lecture_reservation_inbox`. A duplicate insert
+   ends normally without another booking. A different eventId for a finished
+   request also does not rebook, because only PROCESSING requests execute.
+8. `ReservationService.reserveAccepted` joins that transaction and reuses the
+   original reservation body: idempotency, bookability, conditional capacity
+   UPDATE, confirmed order or waitlist, notification Outbox, cache invalidation.
+   Inbox, order/capacity/waitlist, notification Outbox and final request result
+   commit together. The listener returns only after commit, allowing AUTO ACK.
 
-The original `POST /api/v1/slots/{slotId}/reservations` is retained. With async mode enabled, new lecture reservations on that endpoint return `409 lecture-async-reservation-required` so they cannot jump the accepted queue. Existing synchronous idempotent replays still work, and non-lecture fixed slots keep their original synchronous path.
+The request table serves HTTP idempotency, reliable acceptance and polling.
+The Inbox serves eventId deduplication. They are not interchangeable. There is
+no additional per-slot sequence table, head scan, drain loop or recovery scanner.
 
-## Ordering and transactions
+## Ordering and failure boundaries
 
-1. Fast idempotency read, existing Redis Lua admission.
-2. Short MySQL transaction locks **lecture_request_sequence**, allocates per-slot sequence, inserts **lecture_reservation_request** and a command into the **existing reservation_outbox_event**. This is NOT the resource-slot lock. Allocation commits before a later allocation can pass it; rolled-back allocations do not create invisible earlier queue entries.
-3. Only after commit does the HTTP service return 202. An insert/commit error is not accepted.
-4. Existing Outbox lease → publish to a dedicated `campus.lecture.commands` exchange (`lecture.reserve`) → Publisher Confirm **and** mandatory Return check → mark published. Notification exchange/routing is unchanged.
-5. Two consumers may receive wakeups in any order. A wakeup only identifies the slot, not which request wins. Each attempt first locks the **original resource_slot**, then selects the earliest committed PROCESSING request by sequence **without SKIP LOCKED**. A deferred head blocks later requests.
-6. Worker invokes `ReservationService.reserveAccepted()` with internal `LECTURE_QUEUE_WORKER` authority. It executes the same private reservation body as the synchronous method, skipping only a second Redis admission. Browser student authority cannot call this worker-only method through method security.
-7. Original conditional capacity update, order/waitlist creation, notification Outbox and final request result commit in **one transaction**. Existing slot/maintenance exclusion, unique constraints and cancellation/promotion remain in use.
+New admission does **not promise strict request-arrival FIFO**. Two consumers,
+redeliveries and retries may reorder which request obtains the slot lock first.
+The existing cancellation algorithm still promotes the oldest eligible waitlist
+entry; no SKIP LOCKED was introduced. Original capacity and active-order unique
+constraints remain authoritative. Async admission moves the original slot-lock
+wait off the HTTP request, not out of the system or out of the consumer transaction.
 
-FIFO means committed admission order for the same slot, not who first clicked or opened a TCP connection. Existing waitlist selection still uses its original `created_at,id` ordering. There is no Rabbit single-consumer/FIFO assumption and no Redis inventory pre-deduction.
+- Acceptance/Outbox insert fails: rollback, no successful acceptance response.
+- Publisher fails/Return/timeout: original Outbox stays recoverable for retry.
+- Crash after publish before PUBLISHED: duplicate command is safe through Inbox.
+- Business rejection: first booking transaction rolls back, then a fresh
+  slot-locked transaction commits Inbox + FAILED + sanitized business code.
+- Infrastructure or uncertain commit failure: propagate, roll back where
+  possible, retry up to **3 total attempts** (1s/2s backoff), then reject to
+  `<command-queue>.dlq`. Do not falsely finalize FAILED on an uncertain commit.
+- Malformed/version-1/unknown-request commands: non-requeue rejection to DLQ;
+  the retry policy excludes this exception, so no poison retry loop.
+- Exhausted failures can leave a request PROCESSING. Diagnose/fix and explicitly
+  replay the original command/eventId. There is no automatic DLQ redrive or
+  periodic recovery scanner. Notification's DLQ command expects notification
+  events and is NOT a compatible lecture-command replay tool.
 
-## Failure handling
+Restrict exchange publishing permissions. Inbox assumes trusted, unique eventIds
+from this Outbox; it is not a substitute for broker authorization. Broker/DB
+durability does not imply a bounded time to final result or production SLA.
 
-- Producer fails before commit: no accepted request without its event; HTTP is not 202. A transaction-level uncertain commit returns sanitized `500 lecture-request-commit-uncertain`; retry the same idempotency key because a lost connection does not prove commit failed.
-- Publish fails, times out or is returned: existing Outbox retry/lease recovery; request remains PROCESSING.
-- Crash after confirm before published marking: the same event can be republished; repeated wakeups do not create additional orders/notification events.
-- Worker DB failure/crash: the complete booking attempt rolls back. Deferred head remains PROCESSING; bounded exponential delay (up to 60 seconds), measured using **DB time**, prevents immediate database retries. If the database is unavailable even for defer, the durable request remains untouched.
-- Permanent business failure (closed slot, duplicate active reservation, etc.): rollback first, then persist FAILED in a fresh slot-locked transaction. No partial booking changes survive.
-- Recovery scheduler (5 seconds) atomically schedules new Outbox wakeups for due unfinished slots, coalesced to at most once per 30 seconds per batch. It does not bypass the database head or execute booking on a scheduler thread.
-- Malformed/unsupported MQ messages: reject once to dedicated `<command-queue>.dlq`; no automatic poison-message requeue loop. Durable requests can still recover independently. Restrict broker publish permissions; the command carries slot/version only, not JWT/user data.
+## Upgrade and rollback
 
-Infrastructure failures can leave PROCESSING until recovery; this MVP has no user-facing request-cancellation/deadline or automatic administrative repair for persistent corrupt database data. Monitor PROCESSING age, attempts and command DLQ; do not silently delete queue heads.
+V12 remains immutable. V13 creates the consumer Inbox and removes the obsolete
+sequence table, queue indexes and backoff fields; request/order history is retained.
 
-## Safe rollback
-
-Stop new async submission traffic; **keep Outbox, consumers and recovery running**. Check:
+Before deploying V13: stop async admission on all entry points, leave the OLD
+consumers/Outbox running, and drain all PROCESSING requests, unpublished lecture
+commands and old broker messages (including unacked and DLQ). Inspect failures;
+do not delete requests to bypass the guard. Check at least:
 
 ```sql
-SELECT status,COUNT(*) FROM lecture_reservation_request GROUP BY status;
-SELECT MIN(created_at),MAX(attempts) FROM lecture_reservation_request WHERE status='PROCESSING';
+SELECT COUNT(*) FROM lecture_reservation_request WHERE status='PROCESSING';
+SELECT COUNT(*) FROM reservation_outbox_event
+WHERE event_type='LECTURE_RESERVATION_REQUESTED' AND publish_status<>'PUBLISHED';
 ```
 
-Wait for PROCESSING=0 (investigate failures/backlog instead of skipping heads), then set `LECTURE_ASYNC_ENABLED=false` on **all** instances and restore traffic to the original synchronous endpoint. Keep V12 tables and existing Outbox data; no destructive schema downgrade/reset. Do not run old synchronous nodes and new asynchronous admission nodes as an uncontrolled mixed deployment.
+V13 fails before business DDL if either count is nonzero. Also check RabbitMQ:
+the SQL guard cannot see broker backlog. It requires CREATE TEMPORARY TABLES.
+MySQL DDL is not fully transactional: take the normal schema backup and follow
+Flyway repair procedures if an upgrade fails; do not edit already applied V12.
+Do not mix V1 and V2 workers. V1 commands are intentionally not interpreted as V2.
 
-## Verification and limits
+For runtime rollback, stop async admission, keep the V2 consumers/Outbox alive
+until requests and queues are drained, then disable async on all instances and
+restore the original synchronous endpoint. Keep V13 tables and request history;
+the old binary expecting V12 columns cannot be deployed against V13 directly.
 
-Run ordinary regression with `mvn test`. Opt-in live validation (from repository root):
+## Validation
+
+`mvn test` runs ordinary regression. Explicit real-infrastructure validation:
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File deploy/benchmark/lecture-async-live.ps1
 ```
 
-It reads ignored local connection settings; creates a unique `campus_audit_<run>` schema and unique MQ exchange/queues, and deletes only those owned resources in cleanup. Redis uses the new test slot keys with ordinary limiter TTL. Admission quotas are increased **only in this test** so a low threshold cannot mask database contention. The 500-simultaneous-caller case explicitly uses test Tomcat accept-count=1000 and a 30-second client connection timeout; these are not changes to deployment defaults.
+The runner creates and cleans only its own unique MySQL schema and RabbitMQ
+topology. The 500-caller test raises admission quotas ONLY for the test and
+measures acceptance separately from final processing. It checks request-specific
+deduplication, rollback, bounded retries/DLQ, original cancellation promotion,
+Broker Returns, expired-lease duplicate delivery and 500 final outcomes. It does
+not measure Gateway or Notification Consumer throughput, prove multi-instance
+performance, or verify real process-kill/host-failure recovery.
 
-This decouples HTTP from the long original reservation lock, not from MySQL or all queueing. The short sequencing row, connection pool, Outbox batch delivery and single-slot worker still bound throughput. 202 latency and time to final result are different metrics. No production SLA, multi-instance deployment throughput, real process-kill/host outage, Gateway throughput or Notification Consumer end-to-end performance claim is made by this isolated test.
-
-## Modification map
-
-- Schema: `reservation-service/src/main/resources/db/migration/V12__lecture_async_requests.sql`.
-- Acceptance/query: `LectureReservationRequestController`, `LectureReservationRequestService[Impl]`, `LectureRequestPersistence`, `LectureReservationRequestMapper/Entity`, `LectureRequestResponse`.
-- Durable command: `LectureRequestOutbox`, `LectureReservationWakeup`, `LectureAsyncMessagingConfiguration`.
-- Processing/recovery: `LectureReservationListener`, `LectureReservationWorker`, `LectureRequestRecoveryScheduler`.
-- Reused integration: `ReservationService[Impl]`, `ReservationEventType`, `RabbitReservationOutboxPublisher`; no changes to existing Outbox leasing/Inbox transactions.
-- Routing/config: Gateway route, Reservation `application.yml`, `deploy/.env.example`, local Compose feature flags.
-- Tests: `LectureRequestContractTest`, `LectureReservationListenerTest`, `LecturePublisherTest`, `LectureReservationRequestServiceImplTest`, opt-in `LectureAsyncLiveTest`; runner `deploy/benchmark/lecture-async-live.ps1`.
-
-The browser demo remains on the synchronous API by default. Async operation is exposed as opt-in APIs rather than silently changing the existing UI response contract.
+The browser demo remains on the synchronous endpoint by default; enabling this
+opt-in API does not silently change the existing browser response contract.

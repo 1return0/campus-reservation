@@ -1,0 +1,43 @@
+{
+  "date": "2026-10-17",
+  "implementation": "request-specific schemaVersion=2 commands with transactional consumer Inbox",
+  "run": "7acc8e2cb9ae",
+  "result": "passed",
+  "cleanup": "dropped-only-this-run-schema-and-dedicated-MQ-topology",
+  "scope": "direct Reservation HTTP + isolated real MySQL/Redis/RabbitMQ; not Gateway or Notification Consumer throughput",
+  "checks": [
+    "request-specific processing; 8 competing duplicate deliveries; one Inbox row",
+    "different eventId for completed request does not create another order",
+    "idempotent accepted replay and owner-isolated polling",
+    "20 concurrent same-key submissions all 202 with one request/order",
+    "acceptance Outbox failure rolls back request; HTTP 500, not 202/403",
+    "DB failure rolls back Inbox/capacity/order/notification/result; same command succeeds after repair",
+    "original cancellation waitlist promotion and notification Outbox preserved",
+    "maintenance rejection persists FAILED with no reservation side effects",
+    "HTTP accepted while original resource_slot lock remained held",
+    "500 HTTP submissions accepted; two consumers produce 20 CONFIRMED, 480 WAITLISTED, 500 Inbox and notification Outbox rows",
+    "malformed message reaches isolated DLQ",
+    "real consumer infrastructure retries exhaust into DLQ; explicit replay after repair succeeds",
+    "broker Return leaves pending Outbox; restored route succeeds",
+    "publish-before-markPublished crash window reproduced by lease expiration; duplicate creates one order/notification event"
+  ],
+  "measurements": {
+    "acceptWhileOriginalSlotLockedMillis": 25.6739,
+    "accept500Concurrent500": {
+      "requests": 500,
+      "tps": 246.96893787698883,
+      "p50Millis": 1117.9165,
+      "p95Millis": 1691.9599,
+      "p99Millis": 1748.2247
+    },
+    "finish500AfterConsumerStartMillis": 13933.481
+  },
+  "limits": [
+    "No strict new-admission FIFO guarantee",
+    "Test-only elevated admission quotas; production thresholds unchanged",
+    "Single local application process; not multi-instance benchmark",
+    "Crash window injected; no real process-kill or host-outage recovery test",
+    "No stable before/after A/B speedup claim",
+    "No full original real-MySQL safety-suite rerun; historical study-room maintenance count failure remains documented"
+  ]
+}
