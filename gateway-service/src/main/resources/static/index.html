@@ -20,24 +20,28 @@
       <p>讲座等活动由员工发布固定场次与名额；研讨室由学生组队后选择开放窗口内的使用区间。两条业务均支持候补、履约和通知。</p>
     </section>
 
-    <section id="auth-section" class="auth-grid">
-      <div class="card">
+    <section id="auth-section" class="auth-shell">
+      <p id="auth-feedback" class="auth-feedback" role="status" aria-live="polite" hidden></p>
+      <div id="login-card" class="card">
         <h2>登录</h2>
         <form id="login-form" class="form-grid">
           <label>用户名<input name="username" required maxlength="32" autocomplete="username"></label>
           <label>密码<input name="password" type="password" required autocomplete="current-password"></label>
           <button type="submit">登录系统</button>
         </form>
+        <p class="auth-switch">还没有账号？<a id="show-register" href="#/register">注册学生账号</a></p>
       </div>
-      <div class="card">
+      <div id="register-card" class="card" hidden>
         <h2>学生注册</h2>
         <form id="register-form" class="form-grid">
-          <label>用户名<input name="username" required minlength="4" maxlength="32" pattern="[A-Za-z0-9_-]+"></label>
+          <label>用户名<input name="username" required minlength="4" maxlength="32" pattern="[A-Za-z0-9_\-]+" autocomplete="username"><small>4～32 位字母、数字、下划线或短横线。</small></label>
           <label>显示名称<input name="displayName" required maxlength="64"></label>
-          <label>学号<input name="studentNumber" required minlength="4" maxlength="32" pattern="[0-9A-Za-z_-]+"></label>
+          <label>学号<input name="studentNumber" required minlength="4" maxlength="32" pattern="[0-9A-Za-z_\-]+"></label>
           <label>密码<input name="password" type="password" required minlength="8" maxlength="72" autocomplete="new-password"></label>
+          <label>确认密码<input name="confirmPassword" type="password" required minlength="8" maxlength="72" autocomplete="new-password"></label>
           <button type="submit" class="secondary">创建学生账号</button>
         </form>
+        <p class="auth-switch">已有账号？<a id="show-login" href="#/login">返回登录</a></p>
       </div>
     </section>
 
@@ -46,6 +50,8 @@
         <div><h2>工作台</h2><p id="role-description"></p></div>
         <button id="logout-button" class="ghost" type="button">退出登录</button>
       </div>
+      <nav id="workspace-nav" class="workspace-nav" aria-label="功能导航"></nav>
+      <p id="page-feedback" class="page-feedback" role="alert" hidden></p>
 
       <div id="student-panel" hidden>
         <h2>讲座等活动 · 固定场次报名</h2>
@@ -79,6 +85,7 @@
             <div class="section-head"><h3>研讨室与开放窗口</h3><button id="reload-study-rooms" class="small secondary" type="button">刷新</button></div>
             <p class="muted">使用日期前两天 00:00 开放；组队不占房间，提交时以实时结果为准。</p>
             <div id="study-room-list" class="stack"></div>
+            <p id="study-room-selection" class="muted" role="status" aria-live="polite">请选择一间研讨室，查看开放时间。</p>
             <div id="study-window-list" class="stack"></div>
             <div id="study-occupied-list" class="stack"></div>
           </section>
@@ -109,14 +116,16 @@
 
       <div id="admin-panel" hidden>
         <div class="columns">
-          <section class="card"><h3>开放研讨室使用窗口</h3>
+          <section class="card"><h3>设置研讨室每日使用窗口</h3>
             <form id="study-window-form" class="form-grid">
               <label>研讨室 ID<input name="resourceId" required inputmode="numeric" pattern="[0-9]+"></label>
-              <label>开始<input name="startsAt" type="datetime-local" step="1800" required></label>
-              <label>结束<input name="endsAt" type="datetime-local" step="1800" required></label>
-              <button type="submit">开放窗口</button>
+              <label>生效日期（含）<input name="startsOn" type="date" required></label>
+              <label>结束日期（含）<input name="endsOn" type="date" required></label>
+              <label>每日开始<input name="dailyStartsAt" type="time" value="07:30" step="1800" required></label>
+              <label>每日结束<input name="dailyEndsAt" type="time" value="21:30" step="1800" required></label>
+              <button type="submit">按日期开放窗口</button>
             </form>
-            <p class="muted">建议默认每天 07:30–21:30，可由员工按日期调整；关闭窗口将维护取消受影响预约。</p>
+            <p class="muted">会为日期范围内每天生成一个具体窗口，默认 07:30–21:30；员工可按日期调整。单次最多 31 天，关闭窗口将维护取消受影响预约。</p>
             <div id="admin-study-window-list" class="stack"></div>
           </section>
           <section class="card"><h3>设置研讨室人数</h3>
@@ -159,5 +168,16 @@
     </section>
     <div id="feedback" role="status" aria-live="polite"></div>
   </main>
+  <dialog id="operation-dialog" aria-labelledby="operation-title">
+    <form id="operation-form" class="form-grid">
+      <h2 id="operation-title"></h2>
+      <p id="operation-description" class="muted"></p>
+      <div id="operation-fields" class="form-grid"></div>
+      <div class="dialog-actions">
+        <button id="operation-cancel" type="button" class="ghost">取消</button>
+        <button type="submit">确定</button>
+      </div>
+    </form>
+  </dialog>
 </body>
 </html>

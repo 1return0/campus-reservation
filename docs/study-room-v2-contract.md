@@ -20,7 +20,9 @@ not be displayed or reused as the room's seating capacity.
   00:00. This is not a rolling 48-hour window.
 - ADMIN and SUPPORT_STAFF configure each room's available use windows. The
   initial/default daily window is 07:30–21:30, but it is not a hard-coded
-  global rule. Submitting a booking can happen at any time after release and
+  global rule. The admin API can create a bounded date range with the same
+  daily start/end time; it persists one concrete window per date. Submitting a
+  booking can happen at any time after release and
   before the requested interval starts.
 - Students select a start and end within one available window, on 30-minute
   boundaries. Duration is 60–240 minutes. The server rechecks every rule at

@@ -7,6 +7,7 @@ import com.campusreserve.reservation.dao.mapper.*;
 import com.campusreserve.reservation.domain.*;
 import com.campusreserve.reservation.dto.req.CreateStudyRoomBookingRequest;
 import com.campusreserve.reservation.dto.req.CreateStudyRoomWindowRequest;
+import com.campusreserve.reservation.dto.req.CreateStudyRoomDailyWindowsRequest;
 import com.campusreserve.reservation.dto.req.UpdateStudyRoomOccupancyRequest;
 import com.campusreserve.reservation.dto.req.ReplaceStudyRoomWindowRequest;
 import com.campusreserve.reservation.dto.resp.StudyRoomBookingResponse;
@@ -31,6 +32,8 @@ import java.time.Clock;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.LocalDate;
+import java.time.LocalTime;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.UUID;
 import java.util.ArrayList;
@@ -66,17 +69,30 @@ public class StudyRoomServiceImpl implements StudyRoomService {
     public StudyRoomWindowResponse openWindow(CreateStudyRoomWindowRequest request) {
         validateWindow(request.startsAt(), request.endsAt());
         requireRoom(request.resourceId());
-        if (windowMapper.countOverlapping(request.resourceId(), request.startsAt(), request.endsAt()) != 0) {
-            throw conflict("study-room-window-overlap");
-        }
-        StudyRoomOpenWindowEntity window = new StudyRoomOpenWindowEntity();
-        window.setResourceId(request.resourceId());
-        window.setStartsAt(request.startsAt());
-        window.setEndsAt(request.endsAt());
-        window.setStatus(StudyRoomWindowStatus.OPEN);
-        windowMapper.insert(window);
+        StudyRoomOpenWindowEntity window = insertOpenWindow(
+                request.resourceId(), request.startsAt(), request.endsAt());
         cacheInvalidation.evictStudyRoomWindowsAfterCommit(request.resourceId());
         return windowResponse(window);
+    }
+
+    @Override
+    @Transactional
+    @PreAuthorize("hasAnyRole('SUPPORT_STAFF','ADMIN')")
+    public List<StudyRoomWindowResponse> openDailyWindows(CreateStudyRoomDailyWindowsRequest request) {
+        validateDailyWindow(request.startsOn(), request.endsOn(),
+                request.dailyStartsAt(), request.dailyEndsAt());
+        requireRoom(request.resourceId());
+
+        List<StudyRoomWindowResponse> result = new ArrayList<>();
+        for (LocalDate date = request.startsOn(); !date.isAfter(request.endsOn()); date = date.plusDays(1)) {
+            LocalDateTime startsAt = date.atTime(request.dailyStartsAt());
+            LocalDateTime endsAt = date.atTime(request.dailyEndsAt());
+            // A same-day window whose start has already passed today is invalid.
+            validateWindow(startsAt, endsAt);
+            result.add(windowResponse(insertOpenWindow(request.resourceId(), startsAt, endsAt)));
+        }
+        cacheInvalidation.evictStudyRoomWindowsAfterCommit(request.resourceId());
+        return result;
     }
 
     @Override
@@ -90,6 +106,18 @@ public class StudyRoomServiceImpl implements StudyRoomService {
         LocalDate lastBookableDate = LocalDate.now(reservationClock).plusDays(2);
         return windowMapper.futureOpen(resourceId, now()).stream()
                 .filter(window -> !window.getStartsAt().toLocalDate().isAfter(lastBookableDate))
+                .map(this::windowResponse).toList();
+    }
+
+    @Override
+    @PreAuthorize("hasAnyRole('SUPPORT_STAFF','ADMIN')")
+    public List<StudyRoomWindowResponse> listAdminWindows(Long resourceId) {
+        ReservableResourceEntity resource = resourceMapper.selectById(resourceId);
+        if (resource == null || !"STUDY_ROOM".equals(resource.getResourceType())
+                || resource.getStatus() != ResourceStatus.PUBLISHED) {
+            throw notFound("study-room-not-found");
+        }
+        return windowMapper.futureOpen(resourceId, now()).stream()
                 .map(this::windowResponse).toList();
     }
 
@@ -606,6 +634,38 @@ public class StudyRoomServiceImpl implements StudyRoomService {
                 || !startsAt.isBefore(endsAt) || !startsAt.isAfter(now())) {
             throw badRequest("study-room-window-invalid");
         }
+    }
+
+    private void validateDailyWindow(LocalDate startsOn, LocalDate endsOn,
+                                     LocalTime dailyStartsAt, LocalTime dailyEndsAt) {
+        long days = startsOn == null || endsOn == null ? -1
+                : ChronoUnit.DAYS.between(startsOn, endsOn) + 1;
+        if (startsOn == null || endsOn == null || startsOn.isAfter(endsOn)
+                || days > 31 || dailyStartsAt == null || dailyEndsAt == null
+                || !dailyStartsAt.isBefore(dailyEndsAt)
+                || !validTime(dailyStartsAt) || !validTime(dailyEndsAt)) {
+            throw badRequest("study-room-daily-window-invalid");
+        }
+    }
+
+    private static boolean validTime(LocalTime value) {
+        return value.getMinute() % 30 == 0 && value.getSecond() == 0
+                && value.getNano() == 0;
+    }
+
+    private StudyRoomOpenWindowEntity insertOpenWindow(Long resourceId,
+                                                        LocalDateTime startsAt,
+                                                        LocalDateTime endsAt) {
+        if (windowMapper.countOverlapping(resourceId, startsAt, endsAt) != 0) {
+            throw conflict("study-room-window-overlap");
+        }
+        StudyRoomOpenWindowEntity window = new StudyRoomOpenWindowEntity();
+        window.setResourceId(resourceId);
+        window.setStartsAt(startsAt);
+        window.setEndsAt(endsAt);
+        window.setStatus(StudyRoomWindowStatus.OPEN);
+        windowMapper.insert(window);
+        return window;
     }
 
     private void validateBookingInterval(LocalDateTime startsAt, LocalDateTime endsAt) {

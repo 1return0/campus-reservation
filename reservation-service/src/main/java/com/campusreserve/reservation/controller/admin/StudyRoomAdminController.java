@@ -2,6 +2,7 @@ package com.campusreserve.reservation.controller.admin;
 
 import com.campusreserve.common.api.ApiResponse;
 import com.campusreserve.reservation.dto.req.CreateStudyRoomWindowRequest;
+import com.campusreserve.reservation.dto.req.CreateStudyRoomDailyWindowsRequest;
 import com.campusreserve.reservation.dto.req.UpdateStudyRoomOccupancyRequest;
 import com.campusreserve.reservation.dto.req.StudyRoomCheckInRequest;
 import com.campusreserve.reservation.dto.req.ReplaceStudyRoomWindowRequest;
@@ -31,6 +32,17 @@ public class StudyRoomAdminController {
     @PostMapping("/windows")
     public ApiResponse<StudyRoomWindowResponse> open(@Valid @RequestBody CreateStudyRoomWindowRequest request) {
         return ApiResponse.success(service.openWindow(request));
+    }
+
+    @PostMapping("/windows/daily")
+    public ApiResponse<List<StudyRoomWindowResponse>> openDaily(
+            @Valid @RequestBody CreateStudyRoomDailyWindowsRequest request) {
+        return ApiResponse.success(service.openDailyWindows(request));
+    }
+
+    @GetMapping("/{resourceId}/windows")
+    public ApiResponse<List<StudyRoomWindowResponse>> windows(@PathVariable Long resourceId) {
+        return ApiResponse.success(service.listAdminWindows(resourceId));
     }
 
     @PostMapping("/windows/{windowId}/maintenance-close")

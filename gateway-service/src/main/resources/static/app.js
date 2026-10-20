@@ -3,6 +3,182 @@ const $ = (id) => document.getElementById(id);
 let accessToken = null;
 let roles = [];
 let feedbackTimer;
+let selectedRoomId = null;
+let viewRevision = 0;
+const workspacePages = [];
+
+function operationDialog(title, description, fields = []) {
+  return new Promise(resolve => {
+    const dialog = $("operation-dialog");
+    const form = $("operation-form");
+    $("operation-title").textContent = title;
+    $("operation-description").textContent = description;
+    $("operation-fields").replaceChildren();
+    for (const field of fields) {
+      const label = node("label", field.label);
+      const input = node("input");
+      input.name = field.name;
+      input.type = field.type || "text";
+      input.value = field.value || "";
+      input.required = true;
+      input.maxLength = field.maxLength || 512;
+      if (field.pattern) input.pattern = field.pattern;
+      if (input.type === "datetime-local") input.step = "1800";
+      label.append(input);
+      $("operation-fields").append(label);
+    }
+    let result = null;
+    const onSubmit = event => {
+      event.preventDefault();
+      result = formObject(form);
+      dialog.close();
+    };
+    const onCancel = () => dialog.close();
+    form.addEventListener("submit", onSubmit);
+    $("operation-cancel").addEventListener("click", onCancel);
+    dialog.addEventListener("close", () => {
+      form.removeEventListener("submit", onSubmit);
+      $("operation-cancel").removeEventListener("click", onCancel);
+      resolve(result);
+    }, { once: true });
+    dialog.showModal();
+  });
+}
+
+async function askText(title, description, value = "") {
+  const values = await operationDialog(title, description,
+    [{ name: "value", label: title, value }]);
+  return values ? values.value.trim() : null;
+}
+
+async function askConfirm(description) {
+  return (await operationDialog("确认操作", description)) !== null;
+}
+
+function initializeWorkspace() {
+  const sections = [
+    ["lectures", "讲座报名", "student", ["catalog-list", "slot-list"]],
+    ["rooms", "研讨室预约", "student", ["study-room-list", "study-booking-form"]],
+    ["teams", "我的组队", "student", ["study-team-create-form"]],
+    ["bookings", "我的预约", "student", ["order-list", "study-booking-list"]],
+    ["notifications", "消息通知", "student", ["notification-list"]],
+    ["room-work", "研讨室签到", "staff", ["study-work-list"]],
+    ["lecture-work", "讲座签到", "staff", ["work-list"]],
+    ["windows", "研讨室运营", "staff", ["study-window-form", "study-occupancy-form"]],
+    ["publish", "发布资源与场次", "staff", ["resource-form", "slot-form"]],
+    ["resources", "资源管理", "staff", ["admin-list"]]
+  ];
+  for (const [key, title, role, targets] of sections) {
+    const page = node("section", null, "workspace-page");
+    page.id = `page-${key}`;
+    page.hidden = true;
+    page.append(node("h2", title));
+    for (const target of targets) page.append($(target).closest(".card"));
+    $("workspace").append(page);
+    const link = node("a", title);
+    link.href = `#/${key}`;
+    $("workspace-nav").append(link);
+    workspacePages.push({ key, title, role, page, link });
+  }
+  for (const id of ["student-panel", "study-room-student-panel", "staff-panel", "admin-panel"]) {
+    $(id).replaceChildren();
+  }
+  $("study-room-list").classList.add("room-grid");
+  const teamShortcut = action("选择或创建团队", () => goToPage("teams"));
+  $("study-booking-form").prepend(teamShortcut);
+}
+
+async function renderWorkspace() {
+  if (!accessToken) return;
+  const revision = ++viewRevision;
+  const student = roles.includes("STUDENT");
+  const available = workspacePages.filter(page => page.role === (student ? "student" : "staff"));
+  const key = location.hash.slice(2);
+  const selected = available.find(page => page.key === key) || available[0];
+  if (!selected) return;
+  for (const entry of workspacePages) {
+    entry.page.hidden = entry !== selected;
+    entry.link.hidden = !available.includes(entry);
+    if (entry === selected) entry.link.setAttribute("aria-current", "page");
+    else entry.link.removeAttribute("aria-current");
+  }
+  if (key !== selected.key) history.replaceState(null, "", `#/${selected.key}`);
+  $("page-feedback").hidden = true;
+  const loaders = {
+    lectures: loadCatalog, rooms: loadStudyRooms, teams: loadStudyTeams,
+    bookings: () => Promise.all([loadOrders(), loadStudyBookings()]),
+    notifications: loadNotifications, "room-work": loadStudyWork,
+    "lecture-work": loadWork, windows: loadAdminStudyWindows,
+    resources: loadAdminResources
+  };
+  try { await loaders[selected.key]?.(); }
+  catch (error) { if (revision === viewRevision) show(error.message, true); }
+}
+
+function goToPage(key) {
+  if (location.hash === `#/${key}`) run(renderWorkspace);
+  else location.hash = `#/${key}`;
+}
+
+function setAuthMessage(message = "", error = false) {
+  const target = $("auth-feedback");
+  target.textContent = message;
+  target.hidden = !message;
+  target.classList.toggle("error", error);
+}
+
+function renderAuthView() {
+  const registering = location.hash === "#/register";
+  $("login-card").hidden = registering;
+  $("register-card").hidden = !registering;
+}
+
+function setAuthView(view) {
+  history.replaceState(null, "", `#/${view}`);
+  renderAuthView();
+}
+
+function errorMessage(code, status) {
+  const messages = {
+    "invalid-credentials": "用户名或密码不正确，请使用注册时设置的密码。",
+    "username-already-exists": "用户名或学号已被使用，请检查后重试。",
+    "invalid-request": "填写内容不符合要求，请检查必填项、格式和长度。",
+    "invalid-student-number": "学号格式不正确，请填写 4–32 位字母、数字、下划线或短横线。",
+    "invalid-or-duplicate-student-number": "邀请学号格式错误或重复，也不能重复邀请队长本人。",
+    "team-member-already-present": "该学号已在团队中或已有待确认邀请，请勿重复追加。",
+    "team-not-forming": "团队当前不能修改，请先取消已有预约，或新建团队。",
+    "team-too-large": "团队成员及待确认邀请已达到人数上限。",
+    "team-not-found": "团队不存在，或你没有访问该团队的权限。",
+    "team-invitation-not-found": "没有找到属于你当前学号的邀请。",
+    "team-invitation-not-active": "邀请已经处理或失效，请刷新团队状态。",
+    "team-invite-code-expired": "邀请码已过期，请联系队长重新组队。",
+    "team-invite-code-not-found": "邀请码不存在，请检查是否完整复制。",
+    "invalid-invite-code": "邀请码格式不正确，请完整复制队长提供的邀请码。",
+    "student-number-not-bound": "请先绑定本人学号后再操作。",
+    "study-team-size-or-consent-invalid": "已确认组员人数不符合房间要求，请让组员登录接受邀请。",
+    "study-team-already-booked": "该团队已有预约，请先取消后再预约。",
+    "study-room-outside-open-window": "所选区间不在房间开放窗口内，请重新选择日期和时间。",
+    "study-room-participant-time-conflict": "有组员在该时段已预约其他研讨室，请更换时段或成员。",
+    "study-room-interval-invalid": "使用区间须在同一天，开始早于结束，且为整点或半点。",
+    "study-room-interval-unbookable": "使用时间须在未来，时长为 60–240 分钟。",
+    "study-room-booking-not-open-yet": "尚未到预约开放日期，使用日前两天 00:00 开放。",
+    "study-room-window-invalid": "开放时间须为同一天的未来区间，并使用整点或半点。",
+    "study-room-daily-window-invalid": "日期范围最多 31 天，每日开始须早于结束，时间使用整点或半点。",
+    "study-room-window-overlap": "所选日期已有重叠的开放窗口，请检查已有设置。",
+    "study-room-check-in-member-not-in-booking": "该学号不在这笔预约的成员快照中，无法签到。",
+    "study-room-check-in-window-closed": "当前不在允许签到的时间范围内。",
+    "study-room-check-in-grace-expired": "已超过签到宽限时间，不能继续核验；请现场确认后登记爽约。",
+    "study-room-check-in-state-conflict": "预约当前状态不允许签到，请刷新履约队列。",
+    "study-room-no-show-window-not-open": "尚未超过签到宽限时间，不能登记爽约。",
+    "study-room-no-show-state-conflict": "预约当前状态不允许登记爽约。",
+    "study-room-complete-state-conflict": "仅已达签到人数要求、由当前处理人负责的预约可完成。",
+    "study-room-cancellation-window-closed": "已过允许取消的时间，请联系工作人员。",
+    "study-room-window-has-in-use-booking": "窗口内有正在使用的预约，暂不能关闭。"
+  };
+  const category = { 400: "填写有误", 401: "登录失效", 403: "权限不足", 404: "未找到", 409: "业务冲突", 429: "请求过于频繁", 503: "服务繁忙" }[status] || "操作失败";
+  const fallback = { 401: "请重新登录。", 403: "当前账号无权进行此操作。", 429: "请稍后再试。" }[status] || "请刷新后重试，或联系工作人员。";
+  return `${category}：${messages[code] || fallback}${code ? `（${code}）` : `（HTTP ${status}）`}`;
+}
 
 function node(tag, content, className) {
   const result = document.createElement(tag);
@@ -22,6 +198,10 @@ function show(message, error = false) {
   const target = $("feedback");
   target.textContent = message;
   target.classList.toggle("error", error);
+  if ($("page-feedback")) {
+    $("page-feedback").hidden = !error;
+    $("page-feedback").textContent = error ? message : "";
+  }
   target.style.display = "block";
   clearTimeout(feedbackTimer);
   feedbackTimer = setTimeout(() => { target.style.display = "none"; }, 6500);
@@ -35,16 +215,18 @@ async function request(path, options = {}) {
   const headers = { ...(options.headers || {}) };
   if (accessToken) headers.Authorization = `Bearer ${accessToken}`;
   if (options.body !== undefined) headers["Content-Type"] = "application/json";
-  const response = await fetch(path, { ...options, headers, cache: "no-store" });
+  let response;
+  try { response = await fetch(path, { ...options, headers, cache: "no-store" }); }
+  catch { throw new Error("网络连接失败：请检查网络或服务是否启动，再重试当前操作。"); }
   const text = await response.text();
   let payload;
   try { payload = text ? JSON.parse(text) : null; } catch { payload = null; }
   if (!response.ok) {
     if (response.status === 401) logout();
-    throw new Error(payload?.message || `HTTP ${response.status}`);
+    throw new Error(errorMessage(payload?.message, response.status));
   }
   if (payload && Object.hasOwn(payload, "code")) {
-    if (payload.code !== 0) throw new Error(payload.message || "业务请求失败");
+    if (payload.code !== 0) throw new Error(errorMessage(payload.message, 409));
     return payload.data;
   }
   return payload;
@@ -61,6 +243,21 @@ function jwtRoles(token) {
 
 function formObject(form) { return Object.fromEntries(new FormData(form).entries()); }
 function jsonBody(value) { return JSON.stringify(value); }
+function localDateInputValue(value) {
+  const year = value.getFullYear();
+  const month = String(value.getMonth() + 1).padStart(2, "0");
+  const day = String(value.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+function initializeStudyWindowForm() {
+  const form = $("study-window-form");
+  if (!form) return;
+  const tomorrow = new Date();
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  const date = localDateInputValue(tomorrow);
+  form.elements.startsOn.value = date;
+  form.elements.endsOn.value = date;
+}
 function fill(targetId, items, render) {
   const target = $(targetId);
   target.replaceChildren();
@@ -70,7 +267,8 @@ function fill(targetId, items, render) {
 function item(title, subtitle, status) {
   const box = node("article", null, "item");
   const head = node("div", null, "item-head");
-  head.append(node("span", title), node("span", status, "badge"));
+  const labels = { PUBLISHED: "已发布", DRAFT: "草稿", OPEN: "开放中", CLOSED: "已关闭", FORMING: "组队中", BOOKED: "已有预约", ACCEPTED: "已确认", INVITED: "待接受", CONFIRMED: "预约成功", WAITLISTED: "候补中", CANCELLED: "已取消", CANCELLED_BY_ADMIN: "维护取消", CHECKED_IN: "已签到", COMPLETED: "已完成", NO_SHOW: "已爽约" };
+  head.append(node("span", title), node("span", labels[status] || status, "badge"));
   box.append(head, node("small", subtitle));
   return box;
 }
@@ -92,6 +290,12 @@ function resourceTypeLabel(type) {
 }
 
 function logout() {
+  document.body.classList.remove("signed-in");
+  selectedRoomId = null;
+  $("study-booking-form").reset();
+  $("study-window-list").replaceChildren();
+  $("study-occupied-list").replaceChildren();
+  $("study-room-selection").textContent = "请选择一间研讨室，查看开放时间。";
   accessToken = null;
   roles = [];
   $("identity").textContent = "尚未登录";
@@ -101,17 +305,31 @@ function logout() {
   $("study-room-student-panel").hidden = true;
   $("staff-panel").hidden = true;
   $("admin-panel").hidden = true;
+  setAuthView("login");
 }
 
 async function login(event) {
   event.preventDefault();
   const form = event.currentTarget;
   const credentials = formObject(form);
-  const result = await request("/api/v1/auth/login", {
-    method: "POST", body: jsonBody(credentials)
-  });
+  credentials.username = credentials.username.trim();
+  setAuthMessage();
+  const button = form.querySelector('button[type="submit"]');
+  button.disabled = true;
+  let result;
+  try {
+    result = await request("/api/v1/auth/login", {
+      method: "POST", body: jsonBody(credentials)
+    });
+  } catch (error) {
+    setAuthMessage(error.message, true);
+    throw error;
+  } finally {
+    button.disabled = false;
+  }
   if (!result?.accessToken) throw new Error("登录响应缺少令牌");
   accessToken = result.accessToken;
+  document.body.classList.add("signed-in");
   form.reset();
   roles = jwtRoles(accessToken);
   $("identity").textContent = `已登录 · ${roles.join(" / ") || "用户"}`;
@@ -129,20 +347,38 @@ async function login(event) {
     ? "讲座等固定场次报名、研讨室自选区间预约与个人通知"
     : "活动场次与研讨室运营、签到履约和通知";
   show("登录成功。令牌只保留在本页内存中，刷新后需重新登录。");
-  if (student) await Promise.all([loadCatalog(), loadOrders(), loadNotifications(),
-    loadStudyTeams(), loadStudyRooms(), loadStudyBookings()]);
-  if (staff) await Promise.all([loadWork(), loadAdminResources(), loadAdminStudyWindows(),
-    loadStudyWork()]);
+  await renderWorkspace();
 }
 
 async function register(event) {
   event.preventDefault();
   const form = event.currentTarget;
-  await request("/api/v1/auth/register", {
-    method: "POST", body: jsonBody(formObject(form))
-  });
-  show("学生账号已创建，请使用左侧表单登录。");
+  const { confirmPassword, ...registration } = formObject(form);
+  setAuthMessage();
+  if (registration.password !== confirmPassword) {
+    setAuthMessage("两次输入的密码不一致，请重新确认。", true);
+    return;
+  }
+  registration.username = registration.username.trim();
+  registration.studentNumber = registration.studentNumber.trim();
+  registration.displayName = registration.displayName.trim();
+  const button = form.querySelector('button[type="submit"]');
+  button.disabled = true;
+  try {
+    await request("/api/v1/auth/register", {
+      method: "POST", body: jsonBody(registration)
+    });
+  } catch (error) {
+    setAuthMessage(error.message, true);
+    throw error;
+  } finally {
+    button.disabled = false;
+  }
   form.reset();
+  setAuthView("login");
+  $("login-form").elements.username.value = registration.username;
+  $("login-form").elements.password.value = "";
+  setAuthMessage("注册成功，请使用刚才设置的密码登录。用户名已自动填写。");
 }
 
 async function loadCatalog() {
@@ -177,7 +413,7 @@ async function loadOrders() {
     item(order.reservationNo, `固定场次 ${order.slotId} · ${date(order.createdAt)}${order.waitlistPosition ? ` · 候补第 ${order.waitlistPosition} 位` : ""}`, order.status),
     ["CONFIRMED", "WAITLISTED"].includes(order.status)
       ? action("取消预约", async () => {
-          if (!confirm("确认取消这笔预约？")) return;
+          if (!await askConfirm("确认取消这笔预约？")) return;
           await request(`/api/v1/reservations/${order.reservationId}`, { method: "DELETE" });
           show("预约已取消");
           await loadOrders();
@@ -232,7 +468,7 @@ async function loadAdminResources() {
       if (resource.resourceType === "STUDY_ROOM") await loadAdminStudyWindows();
     }));
     if (resource.status !== "CLOSED" && roles.includes("ADMIN")) resourceActions.push(action("关闭资源", async () => {
-      if (!confirm("只有没有开放时段的资源才能关闭。继续？")) return;
+      if (!await askConfirm("只有没有开放时段的资源才能关闭。继续？")) return;
       await request(`/api/v1/admin/resources/${resource.resourceId}/close`, { method: "PATCH" });
       await loadAdminResources();
     }, "small danger"));
@@ -244,7 +480,7 @@ async function loadAdminResources() {
       if (slot.speakerName) line.append(node("small", `主讲人：${slot.speakerName}`));
       if (slot.activityDescription) line.append(node("p", slot.activityDescription, "activity-description"));
       if (slot.status === "OPEN" && roles.includes("ADMIN")) actions(line, action("维护取消", async () => {
-        const reason = prompt("请输入取消原因（最多 300 字；将记录操作人和影响数量）");
+        const reason = await askText("维护取消", "请输入取消原因（最多 300 字；将记录操作人和影响数量）");
         if (reason === null) return;
         const result = await request(`/api/v1/admin/slots/${slot.slotId}/cancel`, {
           method: "PATCH", body: jsonBody({ reason })
@@ -289,6 +525,12 @@ async function createSlot(event) {
 
 $("login-form").addEventListener("submit", e => run(() => login(e)));
 $("register-form").addEventListener("submit", e => run(() => register(e)));
+$("show-register").addEventListener("click", () => setAuthMessage());
+$("show-login").addEventListener("click", () => setAuthMessage());
+window.addEventListener("hashchange", () => accessToken ? run(renderWorkspace) : renderAuthView());
+renderAuthView();
+initializeStudyWindowForm();
+initializeWorkspace();
 $("resource-form").addEventListener("submit", e => run(() => createResource(e)));
 $("slot-form").addEventListener("submit", e => run(() => createSlot(e)));
 $("logout-button").addEventListener("click", logout);
@@ -309,7 +551,8 @@ async function loadStudyTeams() {
   const teams = await request("/api/v1/study-teams/mine");
   const claims = currentClaims();
   fill("study-team-list", teams, team => {
-    const members = team.members.map(m => `${m.studentNumber}: ${m.status}`).join(" · ");
+    const memberLabels = { ACCEPTED: "已确认", INVITED: "待接受邀请", DECLINED: "已拒绝", LEFT: "已退出" };
+    const members = team.members.map(m => `${m.studentNumber}：${memberLabels[m.status] || m.status}`).join(" · ");
     const box = item(`团队 ${team.teamId}`, members, team.status);
     const mine = team.members.find(m => m.studentNumber === claims.studentNo);
     const leader = team.leaderStudentNumber === claims.studentNo && mine?.status === "ACCEPTED";
@@ -327,18 +570,20 @@ async function loadStudyTeams() {
     if (leader && team.status === "FORMING") {
       ops.push(action("用于预约", () => {
         $("study-booking-form").elements.teamId.value = team.teamId;
+        goToPage("rooms");
         show(`已选择团队 ${team.teamId}`);
       }));
       ops.push(action("追加邀请学号", async () => {
-        const studentNumber = prompt("请输入被邀请学生的学号");
+        const studentNumber = await askText("追加邀请学号", "填写被邀请学生的学号；对方登录接受后才计入已确认人数。");
         if (!studentNumber) return;
         await request(`/api/v1/study-teams/${team.teamId}/invitations`, {
           method: "POST", body: jsonBody({ studentNumber: studentNumber.trim() })
         });
         await loadStudyTeams();
+        show("邀请已发送，待对方登录接受后计入团队人数。");
       }));
       ops.push(action("关闭团队", async () => {
-        if (!confirm("关闭后不可继续预约，确认关闭？")) return;
+        if (!await askConfirm("关闭后不可继续预约，确认关闭？")) return;
         await request(`/api/v1/study-teams/${team.teamId}/close`, { method: "POST" });
         await loadStudyTeams();
       }, "small danger"));
@@ -382,29 +627,126 @@ async function joinStudyTeam(event) {
 async function loadStudyRooms() {
   const resources = (await request("/api/v1/resources"))
     .filter(resource => resource.resourceType === "STUDY_ROOM");
-  fill("study-room-list", resources, room => actions(
-    item(room.resourceName,
-      `${room.resourceCode} · ${room.minParticipants}–${room.maxParticipants} 人 · ID ${room.resourceId}`,
-      room.status),
-    action("选择 / 查看窗口", async () => {
-      $("study-booking-form").elements.resourceId.value = room.resourceId;
-      const windows = await request(`/api/v1/study-rooms/${room.resourceId}/windows`);
-      const days = [...new Set(windows.map(window => window.startsAt.slice(0, 10)))];
-      const availability = await Promise.all(days.map(day => request(
-        `/api/v1/study-rooms/${room.resourceId}/availability?date=${day}`)));
-      const occupied = availability.flatMap(day => day.occupiedIntervals);
-      fill("study-occupied-list", occupied, interval => item(
-        "已被占用", `${date(interval.startsAt)} - ${date(interval.endsAt)}`, "不可预约"));
-      fill("study-window-list", windows, window => item(
-        `${date(window.startsAt)} – ${date(window.endsAt)}`,
-        `该窗口内可自选 60–240 分钟；提交时再次校验`, window.status));
-    })
-  ));
+  fill("study-room-list", resources, room => {
+    const box = item(room.resourceName,
+      `${room.minParticipants}–${room.maxParticipants} 人 · 房间编号 ${room.resourceId}`,
+      "正在查询开放时间");
+    box.dataset.roomId = room.resourceId;
+    const button = action("选择 / 查看窗口", () => selectStudyRoom(room, button));
+    button.disabled = true;
+    return actions(box, button);
+  });
+  // Bounded requests keep large resource catalogs from flooding the service.
+  for (let offset = 0; offset < resources.length; offset += 4) {
+    await Promise.all(resources.slice(offset, offset + 4).map(async room => {
+      const box = [...$("study-room-list").children].find(box => box.dataset.roomId === room.resourceId);
+      if (!box) return;
+      const badge = box.querySelector(".badge");
+      const button = box.querySelector("button");
+      try {
+        const info = await getRoomAvailability(room);
+        badge.textContent = info.freeIntervals.length ? "可选择时段" : info.windows.length ? "仅可候补" : "暂无开放时间";
+        badge.classList.toggle("unavailable", !info.freeIntervals.length);
+        button.disabled = !info.windows.length;
+        button.textContent = info.windows.length ? "选择 / 查看窗口" : "暂不可预约";
+        box.append(node("small", info.windows.length
+          ? `${info.windows.length} 个开放窗口 · ${info.freeIntervals.length} 段空闲时间；提交时还需核验团队人数与成员时间冲突。`
+          : "当前已释放的日期内没有可用窗口，请联系员工设置或等待下一预约日开放。"));
+      } catch (error) {
+        badge.textContent = "开放时间查询失败";
+        badge.classList.add("unavailable");
+        button.disabled = false;
+        button.textContent = "重试查询";
+        box.append(node("small", error.message));
+      }
+    }));
+  }
+}
+
+async function getRoomAvailability(room) {
+  const publishedWindows = await request(`/api/v1/study-rooms/${room.resourceId}/windows`);
+  const days = [...new Set(publishedWindows.map(window => window.startsAt.slice(0, 10)))];
+  const availability = await Promise.all(days.map(day => request(
+    `/api/v1/study-rooms/${room.resourceId}/availability?date=${day}`)));
+  const now = new Date();
+  const windows = availability.flatMap(day => day.windows).filter(window => {
+    const start = Math.max(new Date(window.startsAt).getTime(), now.getTime());
+    return new Date(window.endsAt).getTime() - start >= 60 * 60 * 1000;
+  });
+  const occupied = availability.flatMap(day => day.occupiedIntervals);
+  const freeIntervals = [];
+  const step = 30 * 60 * 1000;
+  for (const window of windows) {
+    // Round up local campus time to the next half hour; never suggest the past.
+    const next = new Date(now);
+    next.setSeconds(0, 0);
+    next.setMinutes(Math.ceil((now.getMinutes() + (now.getSeconds() || now.getMilliseconds() ? 1 : 0)) / 30) * 30);
+    let cursor = Math.max(new Date(window.startsAt).getTime(), next.getTime());
+    const end = new Date(window.endsAt).getTime();
+    for (const interval of occupied.slice().sort((a, b) => a.startsAt.localeCompare(b.startsAt))) {
+      const busyStart = new Date(interval.startsAt).getTime();
+      const busyEnd = new Date(interval.endsAt).getTime();
+      if (busyEnd <= cursor || busyStart >= end) continue;
+      if (busyStart - cursor >= step * 2) freeIntervals.push({ startsAt: cursor, endsAt: busyStart });
+      cursor = Math.max(cursor, busyEnd);
+    }
+    if (end - cursor >= step * 2) freeIntervals.push({ startsAt: cursor, endsAt: end });
+  }
+  return { windows, occupied, freeIntervals };
+}
+
+async function selectStudyRoom(room, button) {
+  const selection = $("study-room-selection");
+  $("study-booking-form").elements.resourceId.value = room.resourceId;
+  $("study-booking-form").elements.startsAt.value = "";
+  $("study-booking-form").elements.endsAt.value = "";
+  selectedRoomId = room.resourceId;
+  selection.textContent = `已选择：${room.resourceName}（ID ${room.resourceId}），正在加载开放时间…`;
+  $("study-window-list").replaceChildren();
+  $("study-occupied-list").replaceChildren();
+  button.disabled = true;
+  button.textContent = "正在加载…";
+  try {
+    const { windows, occupied, freeIntervals } = await getRoomAvailability(room);
+    if (!windows.length) {
+      selectedRoomId = null;
+      selection.textContent = `已选择：${room.resourceName}（ID ${room.resourceId}）。当前可预约日期内暂无开放窗口，请选择其他房间或联系员工设置开放时间。`;
+      $("study-window-list").append(node("p", "暂无可预约开放窗口，并非已经预约成功。", "empty"));
+      show(`已选择 ${room.resourceName}，但当前暂无可预约开放窗口。`);
+      return;
+    }
+    fill("study-occupied-list", occupied, interval => item(
+      "已被占用", `${date(interval.startsAt)} - ${date(interval.endsAt)}`, "不可预约"));
+    fill("study-window-list", windows, window => item(
+      `${date(window.startsAt)} – ${date(window.endsAt)}`,
+      "该窗口内可自选 60–240 分钟；提交时再次校验", window.status));
+    for (const interval of freeIntervals) {
+      const start = new Date(interval.startsAt);
+      const end = new Date(interval.endsAt);
+      const localDateTime = value => `${localDateInputValue(value)}T${String(value.getHours()).padStart(2, "0")}:${String(value.getMinutes()).padStart(2, "0")}`;
+      $("study-window-list").append(actions(item("空闲区间", `${date(localDateTime(start))} – ${date(localDateTime(end))}`, "可选"),
+        action("填入一小时", () => {
+          $("study-booking-form").elements.startsAt.value = localDateTime(start);
+          $("study-booking-form").elements.endsAt.value = localDateTime(new Date(interval.startsAt + 60 * 60 * 1000));
+          $("study-booking-form").scrollIntoView({ behavior: "smooth", block: "center" });
+        })));
+    }
+    selection.textContent = `已选择：${room.resourceName}，共 ${windows.length} 个开放窗口。${freeIntervals.length ? "可点击空闲区间填入时间。" : "当前没有足够的空闲区间，提交开放窗口内的申请将进入候补。"} 最终结果还需核验团队人数、邀请确认及成员时间冲突。`;
+    show(`已选择 ${room.resourceName}，请查看开放窗口后填写实际使用区间。`);
+  } catch (error) {
+    selection.textContent = `已选择 ${room.resourceName}，但开放时间读取失败：${error.message || "请检查服务连接后重试"}`;
+    throw error;
+  } finally {
+    button.disabled = false;
+    button.textContent = "选择 / 查看窗口";
+    selection.scrollIntoView({ behavior: "smooth", block: "center" });
+  }
 }
 
 async function createStudyBooking(event) {
   event.preventDefault();
   const data = formObject(event.currentTarget);
+  if (!selectedRoomId || data.resourceId !== selectedRoomId) throw new Error("请先在上方选择研讨室并查看开放时间，再提交预约。");
   const result = await request("/api/v1/study-rooms/bookings", {
     method: "POST", headers: { "Idempotency-Key": crypto.randomUUID() },
     body: jsonBody(data)
@@ -423,7 +765,7 @@ async function loadStudyBookings() {
     ["CONFIRMED", "WAITLISTED"].includes(booking.status)
       && currentClaims().studentNo === booking.leaderStudentNumber
       ? action("取消预约", async () => {
-          if (!confirm("确认取消该团队预约？候补可能立即递补。")) return;
+          if (!await askConfirm("确认取消该团队预约？候补可能立即递补。")) return;
           await request(`/api/v1/study-rooms/bookings/${booking.id}`, { method: "DELETE" });
           await Promise.all([loadStudyBookings(), loadStudyTeams()]);
         }, "small danger") : null
@@ -433,10 +775,18 @@ async function loadStudyBookings() {
 async function openStudyWindow(event) {
   event.preventDefault();
   const form = event.currentTarget;
-  await request("/api/v1/admin/study-rooms/windows", {
-    method: "POST", body: jsonBody(formObject(form))
-  });
-  show("研讨室开放窗口已保存");
+  const data = formObject(form);
+  if (data.endsOn < data.startsOn) {
+    throw new Error("结束日期不能早于生效日期");
+  }
+  const button = form.querySelector('button[type="submit"]');
+  button.disabled = true;
+  try {
+    await request("/api/v1/admin/study-rooms/windows/daily", {
+      method: "POST", body: jsonBody(data)
+    });
+  } finally { button.disabled = false; }
+  show(`已按日期范围开放研讨室窗口（${data.startsOn} 至 ${data.endsOn}）`);
   await loadAdminStudyWindows();
 }
 
@@ -465,17 +815,18 @@ async function loadAdminStudyWindows() {
       $("study-window-form").elements.resourceId.value = room.resourceId;
       $("study-occupancy-form").elements.resourceId.value = room.resourceId;
     }));
-    const windows = await request(`/api/v1/study-rooms/${room.resourceId}/windows`);
+    const windows = await request(`/api/v1/admin/study-rooms/${room.resourceId}/windows`);
     for (const window of windows) {
       const line = item(`${date(window.startsAt)} – ${date(window.endsAt)}`,
         `窗口 ${window.id}`, window.status);
       actions(line, action("缩短窗口", async () => {
-        const startsAt = prompt("新的开始时间（只能比原开始晚）", window.startsAt.slice(0, 16));
-        if (startsAt === null) return;
-        const endsAt = prompt("新的结束时间（只能比原结束早）", window.endsAt.slice(0, 16));
-        if (endsAt === null) return;
-        const reason = prompt("对受影响预约的维护取消原因");
-        if (!reason?.trim()) return;
+        const values = await operationDialog("缩短开放窗口", "只允许缩短；受影响的预约将维护取消并通知成员。", [
+          { name: "startsAt", label: "新的开始时间", type: "datetime-local", value: window.startsAt.slice(0, 16) },
+          { name: "endsAt", label: "新的结束时间", type: "datetime-local", value: window.endsAt.slice(0, 16) },
+          { name: "reason", label: "维护原因" }
+        ]);
+        if (!values) return;
+        const { startsAt, endsAt, reason } = values;
         await request(`/api/v1/admin/study-rooms/windows/${window.id}`, {
           method: "PATCH", body: jsonBody({ startsAt, endsAt, reason: reason.trim() })
         });
@@ -483,7 +834,7 @@ async function loadAdminStudyWindows() {
         show("窗口已缩短，仅受影响的预约被维护取消");
       }));
       actions(line, action("维护关闭", async () => {
-        const reason = prompt("维护取消原因（将通知受影响团队）");
+        const reason = await askText("关闭开放窗口", "填写维护取消原因，将通知受影响的团队。");
         if (!reason?.trim()) return;
         await request(`/api/v1/admin/study-rooms/windows/${window.id}/maintenance-close?reason=${encodeURIComponent(reason.trim())}`,
           { method: "POST" });
@@ -508,7 +859,7 @@ async function loadStudyWork() {
     const ops = [];
     if (["CONFIRMED", "CHECKED_IN"].includes(booking.status)) {
       ops.push(action("核验组员签到", async () => {
-        const studentNumber = prompt("请输入现场核验的已预约组员学号");
+        const studentNumber = await askText("核验组员签到", `请输入现场核验的组员学号。本次预约成员：${booking.studentNumbers.join("、")}。`);
         if (!studentNumber?.trim()) return;
         await request(`/api/v1/admin/study-rooms/bookings/${booking.id}/check-in`, {
           method: "PATCH", body: jsonBody({ studentNumber: studentNumber.trim() })
@@ -518,7 +869,7 @@ async function loadStudyWork() {
     }
     if (booking.status === "CONFIRMED") {
       ops.push(action("登记爽约", async () => {
-        if (!confirm("请先现场核实。超过该研讨室的宽限时间后才能登记爽约。")) return;
+        if (!await askConfirm("请先现场核实。超过该研讨室的宽限时间后才能登记爽约。")) return;
         await request(`/api/v1/admin/study-rooms/bookings/${booking.id}/no-show`, { method: "PATCH" });
         await loadStudyWork();
       }, "small danger"));

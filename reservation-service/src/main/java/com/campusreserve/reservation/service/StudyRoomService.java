@@ -2,6 +2,7 @@ package com.campusreserve.reservation.service;
 
 import com.campusreserve.reservation.dto.req.CreateStudyRoomBookingRequest;
 import com.campusreserve.reservation.dto.req.CreateStudyRoomWindowRequest;
+import com.campusreserve.reservation.dto.req.CreateStudyRoomDailyWindowsRequest;
 import com.campusreserve.reservation.dto.req.UpdateStudyRoomOccupancyRequest;
 import com.campusreserve.reservation.dto.req.ReplaceStudyRoomWindowRequest;
 import com.campusreserve.reservation.dto.resp.StudyRoomBookingResponse;
@@ -15,7 +16,9 @@ import java.util.List;
 
 public interface StudyRoomService {
     StudyRoomWindowResponse openWindow(CreateStudyRoomWindowRequest request);
+    List<StudyRoomWindowResponse> openDailyWindows(CreateStudyRoomDailyWindowsRequest request);
     List<StudyRoomWindowResponse> listWindows(Long resourceId);
+    List<StudyRoomWindowResponse> listAdminWindows(Long resourceId);
     StudyRoomAvailabilityResponse availability(Long resourceId, LocalDate date);
     StudyRoomWindowResponse closeWindowForMaintenance(Long windowId, String reason);
     StudyRoomWindowResponse shortenWindow(Long windowId, ReplaceStudyRoomWindowRequest request);

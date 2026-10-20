@@ -4,12 +4,15 @@ import com.campusreserve.common.exception.BusinessException;
 import com.campusreserve.reservation.dao.entity.ReservableResourceEntity;
 import com.campusreserve.reservation.dao.entity.StudyRoomBookingEntity;
 import com.campusreserve.reservation.dao.entity.StudyRoomBookingMemberEntity;
+import com.campusreserve.reservation.dao.entity.StudyRoomOpenWindowEntity;
 import com.campusreserve.reservation.dao.mapper.*;
 import com.campusreserve.reservation.domain.ResourceStatus;
 import com.campusreserve.reservation.domain.ReservationEventType;
 import com.campusreserve.reservation.domain.StudyRoomBookingStatus;
 import com.campusreserve.reservation.dto.req.CreateStudyRoomBookingRequest;
 import com.campusreserve.reservation.dto.req.CreateStudyRoomWindowRequest;
+import com.campusreserve.reservation.dto.req.CreateStudyRoomDailyWindowsRequest;
+import com.campusreserve.reservation.dto.resp.StudyRoomWindowResponse;
 import com.campusreserve.reservation.manager.rate.StudyRoomAdmissionGuard;
 import com.campusreserve.reservation.manager.cache.PublicCatalogCacheInvalidation;
 import com.campusreserve.reservation.service.ReservationOutboxService;
@@ -121,6 +124,35 @@ class StudyRoomServiceImplTest {
         assertThatThrownBy(() -> service.openWindow(new CreateStudyRoomWindowRequest(1L, start, end)))
                 .isInstanceOf(BusinessException.class).hasMessage("study-room-window-overlap");
         verify(resourceMapper).lockById(1L);
+    }
+
+    @Test
+    void opens_one_concrete_window_per_date_for_daily_schedule() {
+        ReservableResourceEntity room = new ReservableResourceEntity();
+        room.setId(1L);
+        room.setResourceType("STUDY_ROOM");
+        room.setStatus(ResourceStatus.PUBLISHED);
+        when(resourceMapper.lockById(1L)).thenReturn(room);
+        when(windowMapper.countOverlapping(eq(1L), any(), any())).thenReturn(0L);
+        doAnswer(invocation -> {
+            StudyRoomOpenWindowEntity window = invocation.getArgument(0);
+            window.setId((long) (100 + invocation.getArgument(0).hashCode() % 10_000));
+            return 1;
+        }).when(windowMapper).insert(any(StudyRoomOpenWindowEntity.class));
+
+        var result = service.openDailyWindows(new CreateStudyRoomDailyWindowsRequest(
+                1L, java.time.LocalDate.of(2026, 10, 9), java.time.LocalDate.of(2026, 10, 11),
+                java.time.LocalTime.of(7, 30), java.time.LocalTime.of(21, 30)));
+
+        assertThat(result).hasSize(3);
+        assertThat(result).extracting(StudyRoomWindowResponse::startsAt)
+                .containsExactly(
+                        LocalDateTime.of(2026, 10, 9, 7, 30),
+                        LocalDateTime.of(2026, 10, 10, 7, 30),
+                        LocalDateTime.of(2026, 10, 11, 7, 30));
+        verify(resourceMapper).lockById(1L);
+        verify(windowMapper, times(3)).insert(any(StudyRoomOpenWindowEntity.class));
+        verify(cacheInvalidation).evictStudyRoomWindowsAfterCommit(1L);
     }
 
     @Test

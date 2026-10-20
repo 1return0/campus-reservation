@@ -33,7 +33,12 @@ class GatewayLandingPageTest {
                 .value(body -> org.assertj.core.api.Assertions.assertThat(body)
                         .contains("CampusReserve", "学生注册", "讲座等活动 · 固定场次报名",
                                 "研讨室 · 自选使用区间预约", "讲座标题（讲座必填）",
-                                "主讲人（讲座必填）", "活动介绍（讲座必填）"));
+                                "主讲人（讲座必填）", "活动介绍（讲座必填）",
+                                "设置研讨室每日使用窗口", "name=\"startsOn\"",
+                                "name=\"dailyStartsAt\"", "07:30", "21:30",
+                                "id=\"login-card\"", "id=\"register-card\" class=\"card\" hidden",
+                                "href=\"#/register\"", "href=\"#/login\"", "name=\"confirmPassword\"",
+                                "id=\"study-room-selection\""));
         webTestClient.get().uri("http://127.0.0.1:" + port + "/app.js")
                 .exchange()
                 .expectStatus().isOk();
