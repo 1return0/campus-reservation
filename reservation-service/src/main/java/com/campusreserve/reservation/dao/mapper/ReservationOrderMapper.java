@@ -12,7 +12,7 @@ import java.util.List;
 @Mapper
 public interface ReservationOrderMapper extends BaseMapper<ReservationOrderEntity> {
 
-    /** Re-read after the existing slot lock; bypass the earlier cached miss. No additional lock. */
+    /** Re-read after a capacity UPDATE or fallback slot lock; bypass the earlier cached miss. */
     @Select("SELECT * FROM reservation_order WHERE requester_reference = #{requester} AND idempotency_key = #{key}")
     @Options(useCache = false, flushCache = Options.FlushCachePolicy.TRUE)
     ReservationOrderEntity findReplayFresh(@Param("requester") String requester, @Param("key") String key);

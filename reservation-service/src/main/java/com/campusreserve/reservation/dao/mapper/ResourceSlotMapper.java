@@ -50,6 +50,19 @@ public interface ResourceSlotMapper extends BaseMapper<ResourceSlotEntity> {
             """)
     int tryConsumeCapacity(@Param("slotId") Long slotId);
 
+    /** New reservations claim capacity atomically; the UPDATE lock lasts until commit. */
+    @Update("""
+            UPDATE resource_slot
+            SET available_capacity = available_capacity - 1,
+                version = version + 1
+            WHERE id = #{slotId}
+              AND status = 'OPEN'
+              AND starts_at > #{currentTime}
+              AND available_capacity > 0
+            """)
+    int tryConsumeFutureCapacity(@Param("slotId") Long slotId,
+                                 @Param("currentTime") java.time.LocalDateTime currentTime);
+
     @Update("""
             UPDATE resource_slot
             SET available_capacity = available_capacity + 1,

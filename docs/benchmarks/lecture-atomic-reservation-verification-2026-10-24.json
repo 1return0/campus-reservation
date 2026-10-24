@@ -1,0 +1,3046 @@
+{
+  "date": "2026-10-24",
+  "baseCommit": "0d68edc",
+  "sourceHashes": [
+    {
+      "file": "reservation-service/src/main/java/com/campusreserve/reservation/service/impl/ReservationServiceImpl.java",
+      "formal": "b367093dc65417125aba1de16aa642b0c427ba238496590b5f2d911e1c355598",
+      "tested": "b367093dc65417125aba1de16aa642b0c427ba238496590b5f2d911e1c355598"
+    },
+    {
+      "file": "reservation-service/src/main/java/com/campusreserve/reservation/dao/mapper/ResourceSlotMapper.java",
+      "formal": "ca5dda6ea81c6c72a52f15f2812b0b587dd41ae314b009d5c57eb2eb2eb29ca0",
+      "tested": "ca5dda6ea81c6c72a52f15f2812b0b587dd41ae314b009d5c57eb2eb2eb29ca0"
+    },
+    {
+      "file": "reservation-service/src/main/java/com/campusreserve/reservation/dao/mapper/ReservationOrderMapper.java",
+      "formal": "ccd412d3cb7cdcd166c90ef1c8dc165639df75b9b9751cfc3f78b52179e3a22a",
+      "tested": "ccd412d3cb7cdcd166c90ef1c8dc165639df75b9b9751cfc3f78b52179e3a22a"
+    }
+  ],
+  "environment": {
+    "independentSchema": true,
+    "mysql": "8.0.45 in VM",
+    "http": "Gateway 18600 -> Reservation 18602",
+    "hikariMaximumPoolSize": 10,
+    "javaHeapMiB": 512,
+    "warmup": {
+      "requests": 150,
+      "concurrency": 20
+    },
+    "redisAdmission": false,
+    "redisCache": false,
+    "mqPublishing": false,
+    "schedulers": false,
+    "note": "No production configuration changes; 1024 accept backlog applies only to adjacent quick comparison. SQL metrics count mapped statements, not transaction commands."
+  },
+  "unitTests": {
+    "tests": 90,
+    "passed": 89,
+    "skipped": 1,
+    "failures": 0,
+    "errors": 0,
+    "skippedReason": "Windows Docker unavailable; SlotCancellationMySqlTest skipped. Real VM validation reported separately."
+  },
+  "runs": [
+    {
+      "role": "earlier-final-source-four-scenarios",
+      "artifact": "target/booking-audit-72e6242f30a6",
+      "testTomcatAcceptCount": 100,
+      "correctness": [
+        {
+          "name": "same-key-with-spare-capacity",
+          "passed": true,
+          "evidence": {
+            "state": {
+              "orders": 1,
+              "outbox": 1,
+              "roomBookings": 0,
+              "roomOverlaps": 0,
+              "waitingRooms": 0,
+              "waitingOrders": 0,
+              "confirmedRooms": 0,
+              "confirmedOrders": 1,
+              "negativeCapacity": 0
+            },
+            "capacity": 19,
+            "outcomes": [
+              200,
+              200,
+              200,
+              200,
+              200,
+              200,
+              200,
+              200,
+              200,
+              200,
+              200,
+              200,
+              200,
+              200,
+              200,
+              200,
+              200,
+              200,
+              200,
+              200
+            ]
+          }
+        },
+        {
+          "name": "different-keys-same-user",
+          "passed": true,
+          "evidence": {
+            "state": {
+              "orders": 1,
+              "outbox": 1,
+              "roomBookings": 0,
+              "roomOverlaps": 0,
+              "waitingRooms": 0,
+              "waitingOrders": 0,
+              "confirmedRooms": 0,
+              "confirmedOrders": 1,
+              "negativeCapacity": 0
+            },
+            "capacity": 19,
+            "outcomes": [
+              409,
+              409,
+              409,
+              409,
+              409,
+              200,
+              409,
+              409,
+              409,
+              409,
+              409,
+              409,
+              409,
+              409,
+              409,
+              409,
+              409,
+              409,
+              409,
+              409
+            ]
+          }
+        },
+        {
+          "name": "same-key-different-slots-does-not-leak-capacity",
+          "passed": true,
+          "evidence": {
+            "state": {
+              "orders": 1,
+              "outbox": 1,
+              "roomBookings": 0,
+              "roomOverlaps": 0,
+              "waitingRooms": 0,
+              "waitingOrders": 0,
+              "confirmedRooms": 0,
+              "confirmedOrders": 1,
+              "negativeCapacity": 0
+            },
+            "remainingCapacitySum": 39,
+            "outcomes": [
+              200,
+              200,
+              200,
+              200,
+              200,
+              200,
+              200,
+              200,
+              200,
+              200,
+              200,
+              200,
+              200,
+              200,
+              200,
+              200,
+              200,
+              200,
+              200,
+              200
+            ]
+          }
+        },
+        {
+          "name": "reject-started-slot-without-consuming-capacity",
+          "passed": true,
+          "evidence": {
+            "httpStatus": 409,
+            "capacity": 1,
+            "state": {
+              "orders": 0,
+              "outbox": 0,
+              "roomBookings": 0,
+              "roomOverlaps": 0,
+              "waitingRooms": 0,
+              "waitingOrders": 0,
+              "confirmedRooms": 0,
+              "confirmedOrders": 0,
+              "negativeCapacity": 0
+            }
+          }
+        },
+        {
+          "name": "reject-cancelled-slot-without-consuming-capacity",
+          "passed": true,
+          "evidence": {
+            "httpStatus": 404,
+            "capacity": 1,
+            "state": {
+              "orders": 0,
+              "outbox": 0,
+              "roomBookings": 0,
+              "roomOverlaps": 0,
+              "waitingRooms": 0,
+              "waitingOrders": 0,
+              "confirmedRooms": 0,
+              "confirmedOrders": 0,
+              "negativeCapacity": 0
+            }
+          }
+        },
+        {
+          "name": "cancel-versus-new-arrival-preserves-existing-waiter",
+          "passed": true,
+          "evidence": {
+            "promoted": "CONFIRMED",
+            "state": {
+              "orders": 3,
+              "outbox": 5,
+              "roomBookings": 0,
+              "roomOverlaps": 0,
+              "waitingRooms": 0,
+              "waitingOrders": 1,
+              "confirmedRooms": 0,
+              "confirmedOrders": 1,
+              "negativeCapacity": 0
+            }
+          }
+        },
+        {
+          "name": "concurrent-idempotency-lecture",
+          "passed": true,
+          "evidence": {
+            "200:CONFIRMED": 20
+          }
+        },
+        {
+          "name": "cancellation-fifo-lecture",
+          "passed": true,
+          "evidence": {
+            "cancelStatus": 200,
+            "statuses": [
+              {
+                "id": "2113894092726341633",
+                "status": "CANCELLED"
+              },
+              {
+                "id": "2113894092860559362",
+                "status": "CONFIRMED"
+              },
+              {
+                "id": "2113894092923473921",
+                "status": "WAITLISTED"
+              }
+            ],
+            "state": {
+              "orders": 3,
+              "outbox": 5,
+              "roomBookings": 0,
+              "roomOverlaps": 0,
+              "waitingRooms": 0,
+              "waitingOrders": 1,
+              "confirmedRooms": 0,
+              "confirmedOrders": 1,
+              "negativeCapacity": 0
+            }
+          }
+        },
+        {
+          "name": "maintenance-lecture",
+          "passed": true,
+          "evidence": {
+            "httpStatus": 200,
+            "state": {
+              "orders": 3,
+              "outbox": 7,
+              "roomBookings": 0,
+              "roomOverlaps": 0,
+              "waitingRooms": 0,
+              "waitingOrders": 0,
+              "confirmedRooms": 0,
+              "confirmedOrders": 0,
+              "negativeCapacity": 0
+            }
+          }
+        },
+        {
+          "name": "outbox-atomic-rollback-lecture",
+          "passed": true,
+          "evidence": {
+            "httpStatus": 500,
+            "unexpectedHttpStatus": false,
+            "rollbackCalls": 1,
+            "attemptedOutboxInsert": 1,
+            "state": {
+              "orders": 0,
+              "outbox": 0,
+              "roomBookings": 0,
+              "roomOverlaps": 0,
+              "waitingRooms": 0,
+              "waitingOrders": 0,
+              "confirmedRooms": 0,
+              "confirmedOrders": 0,
+              "negativeCapacity": 0
+            },
+            "remainingCapacity": 1
+          }
+        },
+        {
+          "name": "maintenance-vs-new-booking-lecture",
+          "passed": true,
+          "evidence": {
+            "maintenanceStatus": 200,
+            "outcomes": [
+              {
+                "status": 200,
+                "outcome": "WAITLISTED"
+              },
+              {
+                "status": 200,
+                "outcome": "CONFIRMED"
+              },
+              {
+                "status": 200,
+                "outcome": "WAITLISTED"
+              },
+              {
+                "status": 200,
+                "outcome": "WAITLISTED"
+              },
+              {
+                "status": 200,
+                "outcome": "WAITLISTED"
+              },
+              {
+                "status": 200,
+                "outcome": "WAITLISTED"
+              },
+              {
+                "status": 200,
+                "outcome": "WAITLISTED"
+              },
+              {
+                "status": 200,
+                "outcome": "WAITLISTED"
+              },
+              {
+                "status": 200,
+                "outcome": "WAITLISTED"
+              },
+              {
+                "status": 200,
+                "outcome": "WAITLISTED"
+              },
+              {
+                "status": 200,
+                "outcome": "WAITLISTED"
+              },
+              {
+                "status": 200,
+                "outcome": "WAITLISTED"
+              },
+              {
+                "status": 200,
+                "outcome": "WAITLISTED"
+              },
+              {
+                "status": 200,
+                "outcome": "WAITLISTED"
+              },
+              {
+                "status": 200,
+                "outcome": "WAITLISTED"
+              },
+              {
+                "status": 200,
+                "outcome": "WAITLISTED"
+              },
+              {
+                "status": 200,
+                "outcome": "WAITLISTED"
+              },
+              {
+                "status": 200,
+                "outcome": "WAITLISTED"
+              },
+              {
+                "status": 200,
+                "outcome": "WAITLISTED"
+              },
+              {
+                "status": 200,
+                "outcome": "WAITLISTED"
+              },
+              {
+                "status": 200,
+                "outcome": "OK"
+              }
+            ],
+            "state": {
+              "orders": 20,
+              "outbox": 40,
+              "roomBookings": 0,
+              "roomOverlaps": 0,
+              "waitingRooms": 0,
+              "waitingOrders": 0,
+              "confirmedRooms": 0,
+              "confirmedOrders": 0,
+              "negativeCapacity": 0
+            }
+          }
+        }
+      ],
+      "cases": [
+        {
+          "label": "lecture-cap20-c50",
+          "requests": 500,
+          "concurrency": 50,
+          "seconds": 8.618737600000001,
+          "tps": 58.01313640178579,
+          "outcomes": {
+            "200:CONFIRMED": 20,
+            "200:WAITLISTED": 480
+          },
+          "metrics": {
+            "clientMillis": {
+              "count": 500,
+              "mean": 826.6149,
+              "p50": 870.7524,
+              "p95": 951.3269,
+              "p99": 996.0069,
+              "max": 1000.2458999999981
+            },
+            "serverMillis": {
+              "count": 500,
+              "mean": 816.2668,
+              "p50": 862.8714,
+              "p95": 944.4977,
+              "p99": 990.7277,
+              "max": 995.4367
+            },
+            "transactionToCommitMillis": {
+              "count": 500,
+              "mean": 811.4369,
+              "p50": 857.6809,
+              "p95": 939.3498,
+              "p99": 986.151,
+              "max": 992.0033
+            },
+            "acquiredLockToCommitMillis": {
+              "count": 500,
+              "mean": 14.885,
+              "p50": 14.4632,
+              "p95": 19.6036,
+              "p99": 24.8271,
+              "max": 28.3091
+            },
+            "lockSqlMillis": {
+              "count": 480,
+              "mean": 1.4491,
+              "p50": 1.3669,
+              "p95": 2.2214,
+              "p99": 3.4034,
+              "max": 7.0386
+            },
+            "connectionAcquireMillis": {
+              "count": 500,
+              "mean": 642.4102,
+              "p50": 676.5594,
+              "p95": 757.8892,
+              "p99": 802.2629,
+              "max": 806.681
+            },
+            "transactionBeginMillis": {
+              "count": 500,
+              "mean": 644.745,
+              "p50": 679.2409,
+              "p95": 760.7307,
+              "p99": 804.2102,
+              "max": 810.8182
+            },
+            "commitMillis": {
+              "count": 500,
+              "mean": 2.4294,
+              "p50": 2.1991,
+              "p95": 4.1171,
+              "p99": 6.9162,
+              "max": 10.801
+            },
+            "requireRoomMillis": {
+              "count": 0
+            },
+            "physicalSqlCount": {
+              "count": 500,
+              "mean": 8.92,
+              "p50": 9,
+              "p95": 9,
+              "p99": 9,
+              "max": 9
+            },
+            "logicalSelectCount": {
+              "count": 500,
+              "mean": 4.96,
+              "p50": 5,
+              "p95": 5,
+              "p99": 5,
+              "max": 5
+            },
+            "promoteMillis": {
+              "count": 0
+            },
+            "promotePhysicalSqlCount": {
+              "count": 0
+            },
+            "promoteLogicalSelectCount": {
+              "count": 0
+            },
+            "promoteCandidateRows": {
+              "count": 0
+            }
+          },
+          "sqlStats": {
+            "ReservationOrderMapper.selectList": {
+              "calls": 500,
+              "totalMillis": 779.7784999999988,
+              "executionMillis": {
+                "count": 500,
+                "mean": 1.5596,
+                "p50": 1.0449,
+                "p95": 2.0542,
+                "p99": 23.7917,
+                "max": 26.0966
+              }
+            },
+            "ResourceSlotMapper.tryConsumeFutureCapacity": {
+              "calls": 500,
+              "totalMillis": 73318.14650000009,
+              "executionMillis": {
+                "count": 500,
+                "mean": 146.6363,
+                "p50": 146.6812,
+                "p95": 176.3789,
+                "p99": 190.1263,
+                "max": 196.786
+              }
+            },
+            "ResourceSlotMapper.selectById": {
+              "calls": 20,
+              "totalMillis": 30.105900000000005,
+              "executionMillis": {
+                "count": 20,
+                "mean": 1.5053,
+                "p50": 1.3414,
+                "p95": 2.1746,
+                "p99": 3.1563,
+                "max": 3.1563
+              }
+            },
+            "ReservationOrderMapper.findReplayFresh": {
+              "calls": 500,
+              "totalMillis": 517.9579,
+              "executionMillis": {
+                "count": 500,
+                "mean": 1.0359,
+                "p50": 0.9512,
+                "p95": 1.6397,
+                "p99": 2.3561,
+                "max": 4.0556
+              }
+            },
+            "ReservationOrderMapper.insert": {
+              "calls": 500,
+              "totalMillis": 943.4105,
+              "executionMillis": {
+                "count": 500,
+                "mean": 1.8868,
+                "p50": 1.7176,
+                "p95": 2.933,
+                "p99": 4.8004,
+                "max": 7.1748
+              }
+            },
+            "ReservationOrderMapper.selectById": {
+              "calls": 500,
+              "totalMillis": 602.4238000000001,
+              "executionMillis": {
+                "count": 500,
+                "mean": 1.2048,
+                "p50": 1.1171,
+                "p95": 1.7629,
+                "p99": 2.3714,
+                "max": 10.8863
+              }
+            },
+            "ReservationOutboxEventMapper.insert": {
+              "calls": 500,
+              "totalMillis": 844.0073000000004,
+              "executionMillis": {
+                "count": 500,
+                "mean": 1.688,
+                "p50": 1.58,
+                "p95": 2.6073,
+                "p99": 4.1201,
+                "max": 8.3707
+              }
+            },
+            "ResourceSlotMapper.lockById": {
+              "calls": 480,
+              "totalMillis": 695.5494000000002,
+              "executionMillis": {
+                "count": 480,
+                "mean": 1.4491,
+                "p50": 1.3669,
+                "p95": 2.2214,
+                "p99": 3.4034,
+                "max": 7.0386
+              }
+            },
+            "ReservationWaitlistEntryMapper.insert": {
+              "calls": 480,
+              "totalMillis": 764.9668,
+              "executionMillis": {
+                "count": 480,
+                "mean": 1.5937,
+                "p50": 1.5065,
+                "p95": 2.2845,
+                "p99": 3.4267,
+                "max": 5.0307
+              }
+            },
+            "ReservationWaitlistEntryMapper.countWaitingPosition": {
+              "calls": 480,
+              "totalMillis": 599.7947999999997,
+              "executionMillis": {
+                "count": 480,
+                "mean": 1.2496,
+                "p50": 1.2036,
+                "p95": 1.8821,
+                "p99": 2.6452,
+                "max": 4.2431
+              }
+            }
+          },
+          "state": {
+            "orders": 500,
+            "outbox": 500,
+            "roomBookings": 0,
+            "roomOverlaps": 0,
+            "waitingRooms": 0,
+            "waitingOrders": 480,
+            "confirmedRooms": 0,
+            "confirmedOrders": 20,
+            "negativeCapacity": 0
+          },
+          "maxObservedWaiters": 9,
+          "lockTables": [
+            "resource_slot/PRIMARY"
+          ],
+          "lockSamplerStatus": "available",
+          "seedSha256": "a98db70c5261764ba49c6c249872cfff955a72f55fb4050ac53beb546f1e7bba",
+          "requestSha256": "ed1e749ce4984d569eaa18e2f8e3da0a32081ede9b902e86c2ff75a12835ba49"
+        },
+        {
+          "label": "lecture-cap20-c500",
+          "requests": 500,
+          "concurrency": 500,
+          "seconds": 8.0675478,
+          "tps": 61.9767012722255,
+          "outcomes": {
+            "200:CONFIRMED": 20,
+            "200:WAITLISTED": 480
+          },
+          "metrics": {
+            "clientMillis": {
+              "count": 500,
+              "mean": 4611.0998,
+              "p50": 4792.9929,
+              "p95": 7691.3827,
+              "p99": 7920.7935,
+              "max": 7968.830300000001
+            },
+            "serverMillis": {
+              "count": 500,
+              "mean": 2563.7761,
+              "p50": 2694.1526,
+              "p95": 3455.3674,
+              "p99": 3518.771,
+              "max": 3532.2528
+            },
+            "transactionToCommitMillis": {
+              "count": 500,
+              "mean": 2558.9942,
+              "p50": 2690.5273,
+              "p95": 3452.5441,
+              "p99": 3506.4574,
+              "max": 3528.3709
+            },
+            "acquiredLockToCommitMillis": {
+              "count": 500,
+              "mean": 13.6756,
+              "p50": 12.1386,
+              "p95": 19.2231,
+              "p99": 36.6093,
+              "max": 236.8189
+            },
+            "lockSqlMillis": {
+              "count": 480,
+              "mean": 1.2887,
+              "p50": 1.1881,
+              "p95": 1.9977,
+              "p99": 3.2789,
+              "max": 5.0945
+            },
+            "connectionAcquireMillis": {
+              "count": 500,
+              "mean": 2404.8063,
+              "p50": 2553.5925,
+              "p95": 3311.7575,
+              "p99": 3368.7436,
+              "max": 3385.565
+            },
+            "transactionBeginMillis": {
+              "count": 500,
+              "mean": 2406.9605,
+              "p50": 2555.1671,
+              "p95": 3313.8202,
+              "p99": 3370.2912,
+              "max": 3386.9852
+            },
+            "commitMillis": {
+              "count": 500,
+              "mean": 2.3598,
+              "p50": 2.0725,
+              "p95": 3.7408,
+              "p99": 6.7265,
+              "max": 24.6627
+            },
+            "requireRoomMillis": {
+              "count": 0
+            },
+            "physicalSqlCount": {
+              "count": 500,
+              "mean": 8.92,
+              "p50": 9,
+              "p95": 9,
+              "p99": 9,
+              "max": 9
+            },
+            "logicalSelectCount": {
+              "count": 500,
+              "mean": 4.96,
+              "p50": 5,
+              "p95": 5,
+              "p99": 5,
+              "max": 5
+            },
+            "promoteMillis": {
+              "count": 0
+            },
+            "promotePhysicalSqlCount": {
+              "count": 0
+            },
+            "promoteLogicalSelectCount": {
+              "count": 0
+            },
+            "promoteCandidateRows": {
+              "count": 0
+            }
+          },
+          "sqlStats": {
+            "ReservationOrderMapper.selectList": {
+              "calls": 500,
+              "totalMillis": 582.6875999999996,
+              "executionMillis": {
+                "count": 500,
+                "mean": 1.1654,
+                "p50": 0.9527,
+                "p95": 2.2439,
+                "p99": 5.1012,
+                "max": 15.9893
+              }
+            },
+            "ResourceSlotMapper.tryConsumeFutureCapacity": {
+              "calls": 500,
+              "totalMillis": 67052.7591,
+              "executionMillis": {
+                "count": 500,
+                "mean": 134.1055,
+                "p50": 121.5657,
+                "p95": 180.1969,
+                "p99": 431.9193,
+                "max": 504.8489
+              }
+            },
+            "ResourceSlotMapper.selectById": {
+              "calls": 20,
+              "totalMillis": 43.37069999999999,
+              "executionMillis": {
+                "count": 20,
+                "mean": 2.1685,
+                "p50": 1.6159,
+                "p95": 7.1884,
+                "p99": 7.2868,
+                "max": 7.2868
+              }
+            },
+            "ReservationOrderMapper.findReplayFresh": {
+              "calls": 500,
+              "totalMillis": 521.7290000000005,
+              "executionMillis": {
+                "count": 500,
+                "mean": 1.0435,
+                "p50": 0.874,
+                "p95": 1.9806,
+                "p99": 3.9751,
+                "max": 9.301
+              }
+            },
+            "ReservationOrderMapper.insert": {
+              "calls": 500,
+              "totalMillis": 991.4655999999999,
+              "executionMillis": {
+                "count": 500,
+                "mean": 1.9829,
+                "p50": 1.5435,
+                "p95": 2.6976,
+                "p99": 5.4168,
+                "max": 116.1613
+              }
+            },
+            "ReservationOrderMapper.selectById": {
+              "calls": 500,
+              "totalMillis": 532.9489,
+              "executionMillis": {
+                "count": 500,
+                "mean": 1.0659,
+                "p50": 0.9513,
+                "p95": 1.6502,
+                "p99": 2.3885,
+                "max": 9.2807
+              }
+            },
+            "ReservationOutboxEventMapper.insert": {
+              "calls": 500,
+              "totalMillis": 742.9111999999994,
+              "executionMillis": {
+                "count": 500,
+                "mean": 1.4858,
+                "p50": 1.3077,
+                "p95": 2.2957,
+                "p99": 3.7715,
+                "max": 21.3662
+              }
+            },
+            "ResourceSlotMapper.lockById": {
+              "calls": 480,
+              "totalMillis": 618.5624999999999,
+              "executionMillis": {
+                "count": 480,
+                "mean": 1.2887,
+                "p50": 1.1881,
+                "p95": 1.9977,
+                "p99": 3.2789,
+                "max": 5.0945
+              }
+            },
+            "ReservationWaitlistEntryMapper.insert": {
+              "calls": 480,
+              "totalMillis": 676.6030000000005,
+              "executionMillis": {
+                "count": 480,
+                "mean": 1.4096,
+                "p50": 1.2768,
+                "p95": 2.1854,
+                "p99": 4.1076,
+                "max": 8.2142
+              }
+            },
+            "ReservationWaitlistEntryMapper.countWaitingPosition": {
+              "calls": 480,
+              "totalMillis": 542.1177,
+              "executionMillis": {
+                "count": 480,
+                "mean": 1.1294,
+                "p50": 1.0689,
+                "p95": 1.6454,
+                "p99": 2.5488,
+                "max": 4.6287
+              }
+            }
+          },
+          "state": {
+            "orders": 500,
+            "outbox": 500,
+            "roomBookings": 0,
+            "roomOverlaps": 0,
+            "waitingRooms": 0,
+            "waitingOrders": 480,
+            "confirmedRooms": 0,
+            "confirmedOrders": 20,
+            "negativeCapacity": 0
+          },
+          "maxObservedWaiters": 9,
+          "lockTables": [
+            "resource_slot/PRIMARY"
+          ],
+          "lockSamplerStatus": "available",
+          "seedSha256": "a98db70c5261764ba49c6c249872cfff955a72f55fb4050ac53beb546f1e7bba",
+          "requestSha256": "ed1e749ce4984d569eaa18e2f8e3da0a32081ede9b902e86c2ff75a12835ba49"
+        },
+        {
+          "label": "lecture-cap500-c50",
+          "requests": 500,
+          "concurrency": 50,
+          "seconds": 5.1303424999999985,
+          "tps": 97.45938014859635,
+          "outcomes": {
+            "200:CONFIRMED": 500
+          },
+          "metrics": {
+            "clientMillis": {
+              "count": 500,
+              "mean": 485.752,
+              "p50": 495.3268,
+              "p95": 521.8659,
+              "p99": 577.5361,
+              "max": 615.8761000000013
+            },
+            "serverMillis": {
+              "count": 500,
+              "mean": 478.9424,
+              "p50": 491.1631,
+              "p95": 517.2398,
+              "p99": 568.221,
+              "max": 575.01
+            },
+            "transactionToCommitMillis": {
+              "count": 500,
+              "mean": 475.8781,
+              "p50": 488.2404,
+              "p95": 514.2431,
+              "p99": 564.82,
+              "max": 572.2314
+            },
+            "acquiredLockToCommitMillis": {
+              "count": 500,
+              "mean": 9.8195,
+              "p50": 9.2962,
+              "p95": 13.5319,
+              "p99": 15.6019,
+              "max": 50.1112
+            },
+            "lockSqlMillis": {
+              "count": 0
+            },
+            "connectionAcquireMillis": {
+              "count": 500,
+              "mean": 376.4273,
+              "p50": 390.9885,
+              "p95": 413.6385,
+              "p99": 459.3549,
+              "max": 467.6818
+            },
+            "transactionBeginMillis": {
+              "count": 500,
+              "mean": 378.3225,
+              "p50": 392.8954,
+              "p95": 415.6917,
+              "p99": 461.3159,
+              "max": 469.201
+            },
+            "commitMillis": {
+              "count": 500,
+              "mean": 2.1141,
+              "p50": 1.9298,
+              "p95": 2.8215,
+              "p99": 4.3548,
+              "max": 43.1667
+            },
+            "requireRoomMillis": {
+              "count": 0
+            },
+            "physicalSqlCount": {
+              "count": 500,
+              "mean": 7,
+              "p50": 7,
+              "p95": 7,
+              "p99": 7,
+              "max": 7
+            },
+            "logicalSelectCount": {
+              "count": 500,
+              "mean": 4,
+              "p50": 4,
+              "p95": 4,
+              "p99": 4,
+              "max": 4
+            },
+            "promoteMillis": {
+              "count": 0
+            },
+            "promotePhysicalSqlCount": {
+              "count": 0
+            },
+            "promoteLogicalSelectCount": {
+              "count": 0
+            },
+            "promoteCandidateRows": {
+              "count": 0
+            }
+          },
+          "sqlStats": {
+            "ReservationOrderMapper.selectList": {
+              "calls": 500,
+              "totalMillis": 452.8876000000002,
+              "executionMillis": {
+                "count": 500,
+                "mean": 0.9058,
+                "p50": 0.7792,
+                "p95": 1.516,
+                "p99": 3.5896,
+                "max": 6.4564
+              }
+            },
+            "ResourceSlotMapper.tryConsumeFutureCapacity": {
+              "calls": 500,
+              "totalMillis": 42932.438800000025,
+              "executionMillis": {
+                "count": 500,
+                "mean": 85.8649,
+                "p50": 85.0066,
+                "p95": 94.5296,
+                "p99": 153.6557,
+                "max": 163.8516
+              }
+            },
+            "ResourceSlotMapper.selectById": {
+              "calls": 500,
+              "totalMillis": 556.5979000000007,
+              "executionMillis": {
+                "count": 500,
+                "mean": 1.1132,
+                "p50": 1.0774,
+                "p95": 1.5252,
+                "p99": 2.157,
+                "max": 4.8253
+              }
+            },
+            "ReservationOrderMapper.findReplayFresh": {
+              "calls": 500,
+              "totalMillis": 387.0476,
+              "executionMillis": {
+                "count": 500,
+                "mean": 0.7741,
+                "p50": 0.7037,
+                "p95": 1.2508,
+                "p99": 1.8335,
+                "max": 5.2075
+              }
+            },
+            "ReservationOrderMapper.insert": {
+              "calls": 500,
+              "totalMillis": 705.500599999999,
+              "executionMillis": {
+                "count": 500,
+                "mean": 1.411,
+                "p50": 1.3236,
+                "p95": 2.0796,
+                "p99": 3.3313,
+                "max": 4.2928
+              }
+            },
+            "ReservationOrderMapper.selectById": {
+              "calls": 500,
+              "totalMillis": 472.65490000000017,
+              "executionMillis": {
+                "count": 500,
+                "mean": 0.9453,
+                "p50": 0.849,
+                "p95": 1.4494,
+                "p99": 2.725,
+                "max": 3.8661
+              }
+            },
+            "ReservationOutboxEventMapper.insert": {
+              "calls": 500,
+              "totalMillis": 747.7298999999997,
+              "executionMillis": {
+                "count": 500,
+                "mean": 1.4955,
+                "p50": 1.2262,
+                "p95": 3.5408,
+                "p99": 5.2748,
+                "max": 6.6116
+              }
+            }
+          },
+          "state": {
+            "orders": 500,
+            "outbox": 500,
+            "roomBookings": 0,
+            "roomOverlaps": 0,
+            "waitingRooms": 0,
+            "waitingOrders": 0,
+            "confirmedRooms": 0,
+            "confirmedOrders": 500,
+            "negativeCapacity": 0
+          },
+          "maxObservedWaiters": 9,
+          "lockTables": [
+            "resource_slot/PRIMARY"
+          ],
+          "lockSamplerStatus": "available",
+          "seedSha256": "b00d8b0f4fffa95c7b6a704afd490435cde2b067626c12ede83b86f3d7b501a8",
+          "requestSha256": "ed1e749ce4984d569eaa18e2f8e3da0a32081ede9b902e86c2ff75a12835ba49"
+        },
+        {
+          "label": "lecture-cap500-c500",
+          "requests": 500,
+          "concurrency": 500,
+          "seconds": 6.537968999999998,
+          "tps": 76.47634915368981,
+          "outcomes": {
+            "200:CONFIRMED": 500
+          },
+          "metrics": {
+            "clientMillis": {
+              "count": 500,
+              "mean": 3453.9179,
+              "p50": 3479.9808,
+              "p95": 6086.4431,
+              "p99": 6371.7449,
+              "max": 6448.849499999997
+            },
+            "serverMillis": {
+              "count": 500,
+              "mean": 1995.1564,
+              "p50": 2352.3091,
+              "p95": 2470.3724,
+              "p99": 2506.545,
+              "max": 2522.1795
+            },
+            "transactionToCommitMillis": {
+              "count": 500,
+              "mean": 1991.2423,
+              "p50": 2348.4232,
+              "p95": 2465.3831,
+              "p99": 2498.8726,
+              "max": 2516.7012
+            },
+            "acquiredLockToCommitMillis": {
+              "count": 500,
+              "mean": 12.2441,
+              "p50": 11.4746,
+              "p95": 17.7784,
+              "p99": 25.1863,
+              "max": 35.9908
+            },
+            "lockSqlMillis": {
+              "count": 0
+            },
+            "connectionAcquireMillis": {
+              "count": 500,
+              "mean": 1868.9564,
+              "p50": 2228.7826,
+              "p95": 2329.119,
+              "p99": 2384.9666,
+              "max": 2407.6969
+            },
+            "transactionBeginMillis": {
+              "count": 500,
+              "mean": 1871.5168,
+              "p50": 2231.4022,
+              "p95": 2333.5461,
+              "p99": 2386.5058,
+              "max": 2410.4462
+            },
+            "commitMillis": {
+              "count": 500,
+              "mean": 2.5599,
+              "p50": 2.4093,
+              "p95": 3.7337,
+              "p99": 6.2346,
+              "max": 7.5943
+            },
+            "requireRoomMillis": {
+              "count": 0
+            },
+            "physicalSqlCount": {
+              "count": 500,
+              "mean": 7,
+              "p50": 7,
+              "p95": 7,
+              "p99": 7,
+              "max": 7
+            },
+            "logicalSelectCount": {
+              "count": 500,
+              "mean": 4,
+              "p50": 4,
+              "p95": 4,
+              "p99": 4,
+              "max": 4
+            },
+            "promoteMillis": {
+              "count": 0
+            },
+            "promotePhysicalSqlCount": {
+              "count": 0
+            },
+            "promoteLogicalSelectCount": {
+              "count": 0
+            },
+            "promoteCandidateRows": {
+              "count": 0
+            }
+          },
+          "sqlStats": {
+            "ReservationOrderMapper.selectList": {
+              "calls": 500,
+              "totalMillis": 592.4415000000005,
+              "executionMillis": {
+                "count": 500,
+                "mean": 1.1849,
+                "p50": 0.9715,
+                "p95": 2.108,
+                "p99": 6.0935,
+                "max": 12.3211
+              }
+            },
+            "ResourceSlotMapper.tryConsumeFutureCapacity": {
+              "calls": 500,
+              "totalMillis": 52571.754,
+              "executionMillis": {
+                "count": 500,
+                "mean": 105.1435,
+                "p50": 101.5173,
+                "p95": 136.9686,
+                "p99": 173.1354,
+                "max": 202.1732
+              }
+            },
+            "ResourceSlotMapper.selectById": {
+              "calls": 500,
+              "totalMillis": 657.3469999999996,
+              "executionMillis": {
+                "count": 500,
+                "mean": 1.3147,
+                "p50": 1.2144,
+                "p95": 2.016,
+                "p99": 3.6709,
+                "max": 4.7526
+              }
+            },
+            "ReservationOrderMapper.findReplayFresh": {
+              "calls": 500,
+              "totalMillis": 555.3263000000001,
+              "executionMillis": {
+                "count": 500,
+                "mean": 1.1107,
+                "p50": 0.9284,
+                "p95": 1.7754,
+                "p99": 4.6532,
+                "max": 11.5956
+              }
+            },
+            "ReservationOrderMapper.insert": {
+              "calls": 500,
+              "totalMillis": 995.5355000000002,
+              "executionMillis": {
+                "count": 500,
+                "mean": 1.9911,
+                "p50": 1.8278,
+                "p95": 2.989,
+                "p99": 6.7274,
+                "max": 10.4445
+              }
+            },
+            "ReservationOrderMapper.selectById": {
+              "calls": 500,
+              "totalMillis": 557.8329999999999,
+              "executionMillis": {
+                "count": 500,
+                "mean": 1.1157,
+                "p50": 1.0311,
+                "p95": 1.8555,
+                "p99": 2.9845,
+                "max": 5.2277
+              }
+            },
+            "ReservationOutboxEventMapper.insert": {
+              "calls": 500,
+              "totalMillis": 863.2235999999999,
+              "executionMillis": {
+                "count": 500,
+                "mean": 1.7264,
+                "p50": 1.5756,
+                "p95": 2.713,
+                "p99": 4.2002,
+                "max": 9.4301
+              }
+            }
+          },
+          "state": {
+            "orders": 500,
+            "outbox": 500,
+            "roomBookings": 0,
+            "roomOverlaps": 0,
+            "waitingRooms": 0,
+            "waitingOrders": 0,
+            "confirmedRooms": 0,
+            "confirmedOrders": 500,
+            "negativeCapacity": 0
+          },
+          "maxObservedWaiters": 9,
+          "lockTables": [
+            "resource_slot/PRIMARY"
+          ],
+          "lockSamplerStatus": "available",
+          "seedSha256": "b00d8b0f4fffa95c7b6a704afd490435cde2b067626c12ede83b86f3d7b501a8",
+          "requestSha256": "ed1e749ce4984d569eaa18e2f8e3da0a32081ede9b902e86c2ff75a12835ba49"
+        }
+      ]
+    },
+    {
+      "role": "baseline-0d68edc",
+      "artifact": "target/booking-audit-8d3ce496db5f",
+      "testTomcatAcceptCount": 1024,
+      "correctness": [
+        {
+          "name": "same-key-with-spare-capacity",
+          "passed": true,
+          "evidence": {
+            "state": {
+              "orders": 1,
+              "outbox": 1,
+              "roomBookings": 0,
+              "roomOverlaps": 0,
+              "waitingRooms": 0,
+              "waitingOrders": 0,
+              "confirmedRooms": 0,
+              "confirmedOrders": 1,
+              "negativeCapacity": 0
+            },
+            "capacity": 19,
+            "outcomes": [
+              200,
+              200,
+              200,
+              200,
+              200,
+              200,
+              200,
+              200,
+              200,
+              200,
+              200,
+              200,
+              200,
+              200,
+              200,
+              200,
+              200,
+              200,
+              200,
+              200
+            ]
+          }
+        },
+        {
+          "name": "different-keys-same-user",
+          "passed": true,
+          "evidence": {
+            "state": {
+              "orders": 1,
+              "outbox": 1,
+              "roomBookings": 0,
+              "roomOverlaps": 0,
+              "waitingRooms": 0,
+              "waitingOrders": 0,
+              "confirmedRooms": 0,
+              "confirmedOrders": 1,
+              "negativeCapacity": 0
+            },
+            "capacity": 19,
+            "outcomes": [
+              409,
+              409,
+              409,
+              200,
+              409,
+              409,
+              409,
+              409,
+              409,
+              409,
+              409,
+              409,
+              409,
+              409,
+              409,
+              409,
+              409,
+              409,
+              409,
+              409
+            ]
+          }
+        },
+        {
+          "name": "same-key-different-slots-does-not-leak-capacity",
+          "passed": true,
+          "evidence": {
+            "state": {
+              "orders": 1,
+              "outbox": 1,
+              "roomBookings": 0,
+              "roomOverlaps": 0,
+              "waitingRooms": 0,
+              "waitingOrders": 0,
+              "confirmedRooms": 0,
+              "confirmedOrders": 1,
+              "negativeCapacity": 0
+            },
+            "remainingCapacitySum": 39,
+            "outcomes": [
+              200,
+              200,
+              200,
+              200,
+              200,
+              200,
+              200,
+              200,
+              200,
+              200,
+              200,
+              200,
+              200,
+              200,
+              200,
+              200,
+              200,
+              200,
+              200,
+              200
+            ]
+          }
+        },
+        {
+          "name": "reject-started-slot-without-consuming-capacity",
+          "passed": true,
+          "evidence": {
+            "httpStatus": 409,
+            "capacity": 1,
+            "state": {
+              "orders": 0,
+              "outbox": 0,
+              "roomBookings": 0,
+              "roomOverlaps": 0,
+              "waitingRooms": 0,
+              "waitingOrders": 0,
+              "confirmedRooms": 0,
+              "confirmedOrders": 0,
+              "negativeCapacity": 0
+            }
+          }
+        },
+        {
+          "name": "reject-cancelled-slot-without-consuming-capacity",
+          "passed": true,
+          "evidence": {
+            "httpStatus": 404,
+            "capacity": 1,
+            "state": {
+              "orders": 0,
+              "outbox": 0,
+              "roomBookings": 0,
+              "roomOverlaps": 0,
+              "waitingRooms": 0,
+              "waitingOrders": 0,
+              "confirmedRooms": 0,
+              "confirmedOrders": 0,
+              "negativeCapacity": 0
+            }
+          }
+        },
+        {
+          "name": "cancel-versus-new-arrival-preserves-existing-waiter",
+          "passed": true,
+          "evidence": {
+            "promoted": "CONFIRMED",
+            "state": {
+              "orders": 3,
+              "outbox": 5,
+              "roomBookings": 0,
+              "roomOverlaps": 0,
+              "waitingRooms": 0,
+              "waitingOrders": 1,
+              "confirmedRooms": 0,
+              "confirmedOrders": 1,
+              "negativeCapacity": 0
+            }
+          }
+        },
+        {
+          "name": "concurrent-idempotency-lecture",
+          "passed": true,
+          "evidence": {
+            "200:CONFIRMED": 20
+          }
+        },
+        {
+          "name": "cancellation-fifo-lecture",
+          "passed": true,
+          "evidence": {
+            "cancelStatus": 200,
+            "statuses": [
+              {
+                "id": "2113896616116133889",
+                "status": "CANCELLED"
+              },
+              {
+                "id": "2113896616250351617",
+                "status": "CONFIRMED"
+              },
+              {
+                "id": "2113896616317460482",
+                "status": "WAITLISTED"
+              }
+            ],
+            "state": {
+              "orders": 3,
+              "outbox": 5,
+              "roomBookings": 0,
+              "roomOverlaps": 0,
+              "waitingRooms": 0,
+              "waitingOrders": 1,
+              "confirmedRooms": 0,
+              "confirmedOrders": 1,
+              "negativeCapacity": 0
+            }
+          }
+        },
+        {
+          "name": "maintenance-lecture",
+          "passed": true,
+          "evidence": {
+            "httpStatus": 200,
+            "state": {
+              "orders": 3,
+              "outbox": 7,
+              "roomBookings": 0,
+              "roomOverlaps": 0,
+              "waitingRooms": 0,
+              "waitingOrders": 0,
+              "confirmedRooms": 0,
+              "confirmedOrders": 0,
+              "negativeCapacity": 0
+            }
+          }
+        },
+        {
+          "name": "outbox-atomic-rollback-lecture",
+          "passed": true,
+          "evidence": {
+            "httpStatus": 500,
+            "unexpectedHttpStatus": false,
+            "rollbackCalls": 1,
+            "attemptedOutboxInsert": 1,
+            "state": {
+              "orders": 0,
+              "outbox": 0,
+              "roomBookings": 0,
+              "roomOverlaps": 0,
+              "waitingRooms": 0,
+              "waitingOrders": 0,
+              "confirmedRooms": 0,
+              "confirmedOrders": 0,
+              "negativeCapacity": 0
+            },
+            "remainingCapacity": 1
+          }
+        },
+        {
+          "name": "maintenance-vs-new-booking-lecture",
+          "passed": true,
+          "evidence": {
+            "maintenanceStatus": 200,
+            "outcomes": [
+              {
+                "status": 200,
+                "outcome": "CONFIRMED"
+              },
+              {
+                "status": 200,
+                "outcome": "WAITLISTED"
+              },
+              {
+                "status": 200,
+                "outcome": "WAITLISTED"
+              },
+              {
+                "status": 200,
+                "outcome": "WAITLISTED"
+              },
+              {
+                "status": 200,
+                "outcome": "WAITLISTED"
+              },
+              {
+                "status": 200,
+                "outcome": "WAITLISTED"
+              },
+              {
+                "status": 200,
+                "outcome": "WAITLISTED"
+              },
+              {
+                "status": 200,
+                "outcome": "WAITLISTED"
+              },
+              {
+                "status": 200,
+                "outcome": "WAITLISTED"
+              },
+              {
+                "status": 200,
+                "outcome": "WAITLISTED"
+              },
+              {
+                "status": 200,
+                "outcome": "WAITLISTED"
+              },
+              {
+                "status": 200,
+                "outcome": "WAITLISTED"
+              },
+              {
+                "status": 200,
+                "outcome": "WAITLISTED"
+              },
+              {
+                "status": 200,
+                "outcome": "WAITLISTED"
+              },
+              {
+                "status": 200,
+                "outcome": "WAITLISTED"
+              },
+              {
+                "status": 200,
+                "outcome": "WAITLISTED"
+              },
+              {
+                "status": 200,
+                "outcome": "WAITLISTED"
+              },
+              {
+                "status": 200,
+                "outcome": "WAITLISTED"
+              },
+              {
+                "status": 200,
+                "outcome": "WAITLISTED"
+              },
+              {
+                "status": 200,
+                "outcome": "WAITLISTED"
+              },
+              {
+                "status": 200,
+                "outcome": "OK"
+              }
+            ],
+            "state": {
+              "orders": 20,
+              "outbox": 40,
+              "roomBookings": 0,
+              "roomOverlaps": 0,
+              "waitingRooms": 0,
+              "waitingOrders": 0,
+              "confirmedRooms": 0,
+              "confirmedOrders": 0,
+              "negativeCapacity": 0
+            }
+          }
+        }
+      ],
+      "cases": [
+        {
+          "label": "lecture-cap20-c500",
+          "requests": 500,
+          "concurrency": 500,
+          "seconds": 8.757792399999998,
+          "tps": 57.09201327951096,
+          "outcomes": {
+            "200:CONFIRMED": 20,
+            "200:WAITLISTED": 480
+          },
+          "metrics": {
+            "clientMillis": {
+              "count": 500,
+              "mean": 4965.4634,
+              "p50": 5065.4364,
+              "p95": 8399.2511,
+              "p99": 8629.6018,
+              "max": 8673.269199999999
+            },
+            "serverMillis": {
+              "count": 500,
+              "mean": 2771.4939,
+              "p50": 3010.0488,
+              "p95": 3557.3764,
+              "p99": 3653.7818,
+              "max": 3678.8771
+            },
+            "transactionToCommitMillis": {
+              "count": 500,
+              "mean": 2762.267,
+              "p50": 2980.9988,
+              "p95": 3552.7888,
+              "p99": 3645.9423,
+              "max": 3672.2167
+            },
+            "acquiredLockToCommitMillis": {
+              "count": 500,
+              "mean": 16.653,
+              "p50": 15.0493,
+              "p95": 22.9691,
+              "p99": 32.8674,
+              "max": 234.905
+            },
+            "lockSqlMillis": {
+              "count": 500,
+              "mean": 148.0774,
+              "p50": 136.2767,
+              "p95": 187.723,
+              "p99": 535.649,
+              "max": 644.773
+            },
+            "connectionAcquireMillis": {
+              "count": 500,
+              "mean": 2593.415,
+              "p50": 2822.1106,
+              "p95": 3397.3191,
+              "p99": 3461.1702,
+              "max": 3487.7837
+            },
+            "transactionBeginMillis": {
+              "count": 500,
+              "mean": 2595.3677,
+              "p50": 2823.5662,
+              "p95": 3399.0791,
+              "p99": 3462.2909,
+              "max": 3489.104801
+            },
+            "commitMillis": {
+              "count": 500,
+              "mean": 2.0347,
+              "p50": 1.701,
+              "p95": 2.8057,
+              "p99": 5.5932,
+              "max": 65.592001
+            },
+            "requireRoomMillis": {
+              "count": 0
+            },
+            "physicalSqlCount": {
+              "count": 500,
+              "mean": 10.92,
+              "p50": 11,
+              "p95": 11,
+              "p99": 11,
+              "max": 11
+            },
+            "logicalSelectCount": {
+              "count": 500,
+              "mean": 5.96,
+              "p50": 6,
+              "p95": 6,
+              "p99": 6,
+              "max": 6
+            },
+            "promoteMillis": {
+              "count": 0
+            },
+            "promotePhysicalSqlCount": {
+              "count": 0
+            },
+            "promoteLogicalSelectCount": {
+              "count": 0
+            },
+            "promoteCandidateRows": {
+              "count": 0
+            }
+          },
+          "sqlStats": {
+            "ReservationOrderMapper.selectList": {
+              "calls": 1000,
+              "totalMillis": 965.844669999999,
+              "executionMillis": {
+                "count": 1000,
+                "mean": 0.9658,
+                "p50": 0.762,
+                "p95": 1.6244,
+                "p99": 5.7212,
+                "max": 23.4376
+              }
+            },
+            "ResourceSlotMapper.lockById": {
+              "calls": 500,
+              "totalMillis": 74038.68392400004,
+              "executionMillis": {
+                "count": 500,
+                "mean": 148.0774,
+                "p50": 136.2767,
+                "p95": 187.723,
+                "p99": 535.649,
+                "max": 644.773
+              }
+            },
+            "ReservationOrderMapper.findReplayFresh": {
+              "calls": 500,
+              "totalMillis": 471.09720999999996,
+              "executionMillis": {
+                "count": 500,
+                "mean": 0.9422,
+                "p50": 0.813,
+                "p95": 1.4408,
+                "p99": 2.7482,
+                "max": 25.285
+              }
+            },
+            "ReservationOrderMapper.insert": {
+              "calls": 500,
+              "totalMillis": 732.3652930000006,
+              "executionMillis": {
+                "count": 500,
+                "mean": 1.4647,
+                "p50": 1.2403,
+                "p95": 2.2981,
+                "p99": 5.6115,
+                "max": 28.1443
+              }
+            },
+            "ResourceSlotMapper.tryConsumeCapacity": {
+              "calls": 500,
+              "totalMillis": 627.2111130000004,
+              "executionMillis": {
+                "count": 500,
+                "mean": 1.2544,
+                "p50": 1.0318,
+                "p95": 2.1854,
+                "p99": 5.1681,
+                "max": 21.0846
+              }
+            },
+            "ReservationOrderMapper.markConfirmed": {
+              "calls": 20,
+              "totalMillis": 76.96390099999999,
+              "executionMillis": {
+                "count": 20,
+                "mean": 3.8482,
+                "p50": 1.81,
+                "p95": 13.6771,
+                "p99": 25.0366,
+                "max": 25.0366
+              }
+            },
+            "ReservationOrderMapper.selectById": {
+              "calls": 500,
+              "totalMillis": 442.169089,
+              "executionMillis": {
+                "count": 500,
+                "mean": 0.8843,
+                "p50": 0.7744,
+                "p95": 1.4135,
+                "p99": 3.0083,
+                "max": 8.613101
+              }
+            },
+            "ReservationOutboxEventMapper.insert": {
+              "calls": 500,
+              "totalMillis": 719.760995,
+              "executionMillis": {
+                "count": 500,
+                "mean": 1.4395,
+                "p50": 1.0828,
+                "p95": 2.2865,
+                "p99": 4.9467,
+                "max": 94.6061
+              }
+            },
+            "ReservationOrderMapper.markWaitlisted": {
+              "calls": 480,
+              "totalMillis": 584.4243990000002,
+              "executionMillis": {
+                "count": 480,
+                "mean": 1.2176,
+                "p50": 1.1027,
+                "p95": 1.7609,
+                "p99": 4.7662,
+                "max": 5.635
+              }
+            },
+            "ReservationWaitlistEntryMapper.insert": {
+              "calls": 480,
+              "totalMillis": 555.1251810000001,
+              "executionMillis": {
+                "count": 480,
+                "mean": 1.1565,
+                "p50": 1.0093,
+                "p95": 1.8579,
+                "p99": 5.498,
+                "max": 6.1527
+              }
+            },
+            "ReservationWaitlistEntryMapper.countWaitingPosition": {
+              "calls": 480,
+              "totalMillis": 449.4524780000002,
+              "executionMillis": {
+                "count": 480,
+                "mean": 0.9364,
+                "p50": 0.8843,
+                "p95": 1.3522,
+                "p99": 2.491,
+                "max": 3.088101
+              }
+            }
+          },
+          "state": {
+            "orders": 500,
+            "outbox": 500,
+            "roomBookings": 0,
+            "roomOverlaps": 0,
+            "waitingRooms": 0,
+            "waitingOrders": 480,
+            "confirmedRooms": 0,
+            "confirmedOrders": 20,
+            "negativeCapacity": 0
+          },
+          "maxObservedWaiters": 9,
+          "lockTables": [
+            "resource_slot/PRIMARY"
+          ],
+          "lockSamplerStatus": "available",
+          "seedSha256": "a98db70c5261764ba49c6c249872cfff955a72f55fb4050ac53beb546f1e7bba",
+          "requestSha256": "ed1e749ce4984d569eaa18e2f8e3da0a32081ede9b902e86c2ff75a12835ba49"
+        },
+        {
+          "label": "lecture-cap500-c500",
+          "requests": 500,
+          "concurrency": 500,
+          "seconds": 6.4659124000000014,
+          "tps": 77.32860717383055,
+          "outcomes": {
+            "200:CONFIRMED": 500
+          },
+          "metrics": {
+            "clientMillis": {
+              "count": 500,
+              "mean": 3449.2447,
+              "p50": 3466.0607,
+              "p95": 6124.6043,
+              "p99": 6349.4694,
+              "max": 6417.989999999998
+            },
+            "serverMillis": {
+              "count": 500,
+              "mean": 2017.1569,
+              "p50": 2376.6024,
+              "p95": 2476.088,
+              "p99": 2524.49,
+              "max": 2561.3098
+            },
+            "transactionToCommitMillis": {
+              "count": 500,
+              "mean": 2013.8566,
+              "p50": 2373.2191,
+              "p95": 2471.9446,
+              "p99": 2520.6628,
+              "max": 2557.1712
+            },
+            "acquiredLockToCommitMillis": {
+              "count": 500,
+              "mean": 12.1354,
+              "p50": 10.2711,
+              "p95": 22.8016,
+              "p99": 32.0141,
+              "max": 45.5538
+            },
+            "lockSqlMillis": {
+              "count": 500,
+              "mean": 107.8087,
+              "p50": 104.5197,
+              "p95": 129.9649,
+              "p99": 209.6826,
+              "max": 272.669999
+            },
+            "connectionAcquireMillis": {
+              "count": 500,
+              "mean": 1890.5514,
+              "p50": 2256.5719,
+              "p95": 2345.9377,
+              "p99": 2402.0121,
+              "max": 2446.1281
+            },
+            "transactionBeginMillis": {
+              "count": 500,
+              "mean": 1892.3486,
+              "p50": 2257.8511,
+              "p95": 2347.5543,
+              "p99": 2403.1022,
+              "max": 2447.2805
+            },
+            "commitMillis": {
+              "count": 500,
+              "mean": 1.7442,
+              "p50": 1.5815,
+              "p95": 2.4346,
+              "p99": 4.6796,
+              "max": 14.4392
+            },
+            "requireRoomMillis": {
+              "count": 0
+            },
+            "physicalSqlCount": {
+              "count": 500,
+              "mean": 9,
+              "p50": 9,
+              "p95": 9,
+              "p99": 9,
+              "max": 9
+            },
+            "logicalSelectCount": {
+              "count": 500,
+              "mean": 5,
+              "p50": 5,
+              "p95": 5,
+              "p99": 5,
+              "max": 5
+            },
+            "promoteMillis": {
+              "count": 0
+            },
+            "promotePhysicalSqlCount": {
+              "count": 0
+            },
+            "promoteLogicalSelectCount": {
+              "count": 0
+            },
+            "promoteCandidateRows": {
+              "count": 0
+            }
+          },
+          "sqlStats": {
+            "ReservationOrderMapper.selectList": {
+              "calls": 1000,
+              "totalMillis": 729.7619930000004,
+              "executionMillis": {
+                "count": 1000,
+                "mean": 0.7298,
+                "p50": 0.6242,
+                "p95": 1.1372,
+                "p99": 2.7817,
+                "max": 8.4559
+              }
+            },
+            "ResourceSlotMapper.lockById": {
+              "calls": 500,
+              "totalMillis": 53904.36939899998,
+              "executionMillis": {
+                "count": 500,
+                "mean": 107.8087,
+                "p50": 104.5197,
+                "p95": 129.9649,
+                "p99": 209.6826,
+                "max": 272.669999
+              }
+            },
+            "ReservationOrderMapper.findReplayFresh": {
+              "calls": 500,
+              "totalMillis": 402.78669599999984,
+              "executionMillis": {
+                "count": 500,
+                "mean": 0.8056,
+                "p50": 0.7363,
+                "p95": 1.2169,
+                "p99": 1.7967,
+                "max": 5.4949
+              }
+            },
+            "ReservationOrderMapper.insert": {
+              "calls": 500,
+              "totalMillis": 584.1458019999997,
+              "executionMillis": {
+                "count": 500,
+                "mean": 1.1683,
+                "p50": 1.0566,
+                "p95": 1.8777,
+                "p99": 2.9367,
+                "max": 5.4574
+              }
+            },
+            "ResourceSlotMapper.tryConsumeCapacity": {
+              "calls": 500,
+              "totalMillis": 653.689484,
+              "executionMillis": {
+                "count": 500,
+                "mean": 1.3074,
+                "p50": 0.9834,
+                "p95": 3.3484,
+                "p99": 5.6175,
+                "max": 7.787901
+              }
+            },
+            "ReservationOrderMapper.markConfirmed": {
+              "calls": 500,
+              "totalMillis": 715.2325139999996,
+              "executionMillis": {
+                "count": 500,
+                "mean": 1.4305,
+                "p50": 0.9584,
+                "p95": 4.7553,
+                "p99": 5.7656,
+                "max": 17.5422
+              }
+            },
+            "ReservationOrderMapper.selectById": {
+              "calls": 500,
+              "totalMillis": 447.19649300000026,
+              "executionMillis": {
+                "count": 500,
+                "mean": 0.8944,
+                "p50": 0.6367,
+                "p95": 2.885,
+                "p99": 3.4771,
+                "max": 5.0954
+              }
+            },
+            "ReservationOutboxEventMapper.insert": {
+              "calls": 500,
+              "totalMillis": 713.8720970000002,
+              "executionMillis": {
+                "count": 500,
+                "mean": 1.4277,
+                "p50": 0.9347,
+                "p95": 5.0258,
+                "p99": 6.0617,
+                "max": 10.8311
+              }
+            }
+          },
+          "state": {
+            "orders": 500,
+            "outbox": 500,
+            "roomBookings": 0,
+            "roomOverlaps": 0,
+            "waitingRooms": 0,
+            "waitingOrders": 0,
+            "confirmedRooms": 0,
+            "confirmedOrders": 500,
+            "negativeCapacity": 0
+          },
+          "maxObservedWaiters": 9,
+          "lockTables": [
+            "resource_slot/PRIMARY"
+          ],
+          "lockSamplerStatus": "available",
+          "seedSha256": "b00d8b0f4fffa95c7b6a704afd490435cde2b067626c12ede83b86f3d7b501a8",
+          "requestSha256": "ed1e749ce4984d569eaa18e2f8e3da0a32081ede9b902e86c2ff75a12835ba49"
+        }
+      ]
+    },
+    {
+      "role": "final-production-source",
+      "artifact": "target/booking-audit-a46d031390cc",
+      "testTomcatAcceptCount": 1024,
+      "correctness": [
+        {
+          "name": "same-key-with-spare-capacity",
+          "passed": true,
+          "evidence": {
+            "state": {
+              "orders": 1,
+              "outbox": 1,
+              "roomBookings": 0,
+              "roomOverlaps": 0,
+              "waitingRooms": 0,
+              "waitingOrders": 0,
+              "confirmedRooms": 0,
+              "confirmedOrders": 1,
+              "negativeCapacity": 0
+            },
+            "capacity": 19,
+            "outcomes": [
+              200,
+              200,
+              200,
+              200,
+              200,
+              200,
+              200,
+              200,
+              200,
+              200,
+              200,
+              200,
+              200,
+              200,
+              200,
+              200,
+              200,
+              200,
+              200,
+              200
+            ]
+          }
+        },
+        {
+          "name": "different-keys-same-user",
+          "passed": true,
+          "evidence": {
+            "state": {
+              "orders": 1,
+              "outbox": 1,
+              "roomBookings": 0,
+              "roomOverlaps": 0,
+              "waitingRooms": 0,
+              "waitingOrders": 0,
+              "confirmedRooms": 0,
+              "confirmedOrders": 1,
+              "negativeCapacity": 0
+            },
+            "capacity": 19,
+            "outcomes": [
+              409,
+              409,
+              409,
+              409,
+              409,
+              409,
+              409,
+              409,
+              409,
+              200,
+              409,
+              409,
+              409,
+              409,
+              409,
+              409,
+              409,
+              409,
+              409,
+              409
+            ]
+          }
+        },
+        {
+          "name": "same-key-different-slots-does-not-leak-capacity",
+          "passed": true,
+          "evidence": {
+            "state": {
+              "orders": 1,
+              "outbox": 1,
+              "roomBookings": 0,
+              "roomOverlaps": 0,
+              "waitingRooms": 0,
+              "waitingOrders": 0,
+              "confirmedRooms": 0,
+              "confirmedOrders": 1,
+              "negativeCapacity": 0
+            },
+            "remainingCapacitySum": 39,
+            "outcomes": [
+              200,
+              200,
+              200,
+              200,
+              200,
+              200,
+              200,
+              200,
+              200,
+              200,
+              200,
+              200,
+              200,
+              200,
+              200,
+              200,
+              200,
+              200,
+              200,
+              200
+            ]
+          }
+        },
+        {
+          "name": "reject-started-slot-without-consuming-capacity",
+          "passed": true,
+          "evidence": {
+            "httpStatus": 409,
+            "capacity": 1,
+            "state": {
+              "orders": 0,
+              "outbox": 0,
+              "roomBookings": 0,
+              "roomOverlaps": 0,
+              "waitingRooms": 0,
+              "waitingOrders": 0,
+              "confirmedRooms": 0,
+              "confirmedOrders": 0,
+              "negativeCapacity": 0
+            }
+          }
+        },
+        {
+          "name": "reject-cancelled-slot-without-consuming-capacity",
+          "passed": true,
+          "evidence": {
+            "httpStatus": 404,
+            "capacity": 1,
+            "state": {
+              "orders": 0,
+              "outbox": 0,
+              "roomBookings": 0,
+              "roomOverlaps": 0,
+              "waitingRooms": 0,
+              "waitingOrders": 0,
+              "confirmedRooms": 0,
+              "confirmedOrders": 0,
+              "negativeCapacity": 0
+            }
+          }
+        },
+        {
+          "name": "cancel-versus-new-arrival-preserves-existing-waiter",
+          "passed": true,
+          "evidence": {
+            "promoted": "CONFIRMED",
+            "state": {
+              "orders": 3,
+              "outbox": 5,
+              "roomBookings": 0,
+              "roomOverlaps": 0,
+              "waitingRooms": 0,
+              "waitingOrders": 1,
+              "confirmedRooms": 0,
+              "confirmedOrders": 1,
+              "negativeCapacity": 0
+            }
+          }
+        },
+        {
+          "name": "concurrent-idempotency-lecture",
+          "passed": true,
+          "evidence": {
+            "200:CONFIRMED": 20
+          }
+        },
+        {
+          "name": "cancellation-fifo-lecture",
+          "passed": true,
+          "evidence": {
+            "cancelStatus": 200,
+            "statuses": [
+              {
+                "id": "2113898093404491778",
+                "status": "CANCELLED"
+              },
+              {
+                "id": "2113898093530320898",
+                "status": "CONFIRMED"
+              },
+              {
+                "id": "2113898093593235458",
+                "status": "WAITLISTED"
+              }
+            ],
+            "state": {
+              "orders": 3,
+              "outbox": 5,
+              "roomBookings": 0,
+              "roomOverlaps": 0,
+              "waitingRooms": 0,
+              "waitingOrders": 1,
+              "confirmedRooms": 0,
+              "confirmedOrders": 1,
+              "negativeCapacity": 0
+            }
+          }
+        },
+        {
+          "name": "maintenance-lecture",
+          "passed": true,
+          "evidence": {
+            "httpStatus": 200,
+            "state": {
+              "orders": 3,
+              "outbox": 7,
+              "roomBookings": 0,
+              "roomOverlaps": 0,
+              "waitingRooms": 0,
+              "waitingOrders": 0,
+              "confirmedRooms": 0,
+              "confirmedOrders": 0,
+              "negativeCapacity": 0
+            }
+          }
+        },
+        {
+          "name": "outbox-atomic-rollback-lecture",
+          "passed": true,
+          "evidence": {
+            "httpStatus": 500,
+            "unexpectedHttpStatus": false,
+            "rollbackCalls": 1,
+            "attemptedOutboxInsert": 1,
+            "state": {
+              "orders": 0,
+              "outbox": 0,
+              "roomBookings": 0,
+              "roomOverlaps": 0,
+              "waitingRooms": 0,
+              "waitingOrders": 0,
+              "confirmedRooms": 0,
+              "confirmedOrders": 0,
+              "negativeCapacity": 0
+            },
+            "remainingCapacity": 1
+          }
+        },
+        {
+          "name": "maintenance-vs-new-booking-lecture",
+          "passed": true,
+          "evidence": {
+            "maintenanceStatus": 200,
+            "outcomes": [
+              {
+                "status": 200,
+                "outcome": "CONFIRMED"
+              },
+              {
+                "status": 200,
+                "outcome": "WAITLISTED"
+              },
+              {
+                "status": 200,
+                "outcome": "WAITLISTED"
+              },
+              {
+                "status": 200,
+                "outcome": "WAITLISTED"
+              },
+              {
+                "status": 200,
+                "outcome": "WAITLISTED"
+              },
+              {
+                "status": 200,
+                "outcome": "WAITLISTED"
+              },
+              {
+                "status": 200,
+                "outcome": "WAITLISTED"
+              },
+              {
+                "status": 200,
+                "outcome": "WAITLISTED"
+              },
+              {
+                "status": 200,
+                "outcome": "WAITLISTED"
+              },
+              {
+                "status": 200,
+                "outcome": "WAITLISTED"
+              },
+              {
+                "status": 200,
+                "outcome": "WAITLISTED"
+              },
+              {
+                "status": 200,
+                "outcome": "WAITLISTED"
+              },
+              {
+                "status": 200,
+                "outcome": "WAITLISTED"
+              },
+              {
+                "status": 200,
+                "outcome": "WAITLISTED"
+              },
+              {
+                "status": 200,
+                "outcome": "WAITLISTED"
+              },
+              {
+                "status": 200,
+                "outcome": "WAITLISTED"
+              },
+              {
+                "status": 200,
+                "outcome": "WAITLISTED"
+              },
+              {
+                "status": 200,
+                "outcome": "WAITLISTED"
+              },
+              {
+                "status": 200,
+                "outcome": "WAITLISTED"
+              },
+              {
+                "status": 200,
+                "outcome": "WAITLISTED"
+              },
+              {
+                "status": 200,
+                "outcome": "OK"
+              }
+            ],
+            "state": {
+              "orders": 20,
+              "outbox": 40,
+              "roomBookings": 0,
+              "roomOverlaps": 0,
+              "waitingRooms": 0,
+              "waitingOrders": 0,
+              "confirmedRooms": 0,
+              "confirmedOrders": 0,
+              "negativeCapacity": 0
+            }
+          }
+        }
+      ],
+      "cases": [
+        {
+          "label": "lecture-cap20-c500",
+          "requests": 500,
+          "concurrency": 500,
+          "seconds": 7.050146700000001,
+          "tps": 70.92051006541466,
+          "outcomes": {
+            "200:CONFIRMED": 20,
+            "200:WAITLISTED": 480
+          },
+          "metrics": {
+            "clientMillis": {
+              "count": 500,
+              "mean": 3963.9526,
+              "p50": 4057.0765,
+              "p95": 6692.6501,
+              "p99": 6937.2784,
+              "max": 6964.0874
+            },
+            "serverMillis": {
+              "count": 500,
+              "mean": 2171.5315,
+              "p50": 2413.7095,
+              "p95": 2723.1312,
+              "p99": 2747.354,
+              "max": 2776.9037
+            },
+            "transactionToCommitMillis": {
+              "count": 500,
+              "mean": 2165.6196,
+              "p50": 2410.6111,
+              "p95": 2717.3316,
+              "p99": 2740.1922,
+              "max": 2768.9231
+            },
+            "acquiredLockToCommitMillis": {
+              "count": 500,
+              "mean": 12.0073,
+              "p50": 10.607,
+              "p95": 18.0151,
+              "p99": 33.7943,
+              "max": 138.7253
+            },
+            "lockSqlMillis": {
+              "count": 480,
+              "mean": 1.0118,
+              "p50": 0.9707,
+              "p95": 1.5332,
+              "p99": 1.8525,
+              "max": 3.6968
+            },
+            "connectionAcquireMillis": {
+              "count": 500,
+              "mean": 2030.7984,
+              "p50": 2297.3448,
+              "p95": 2574.603,
+              "p99": 2604.1743,
+              "max": 2633.283
+            },
+            "transactionBeginMillis": {
+              "count": 500,
+              "mean": 2032.8423,
+              "p50": 2298.7623,
+              "p95": 2576.6107,
+              "p99": 2605.8585,
+              "max": 2635.7201
+            },
+            "commitMillis": {
+              "count": 500,
+              "mean": 1.9828,
+              "p50": 1.6644,
+              "p95": 2.6886,
+              "p99": 6.6944,
+              "max": 34.5146
+            },
+            "requireRoomMillis": {
+              "count": 0
+            },
+            "physicalSqlCount": {
+              "count": 500,
+              "mean": 8.92,
+              "p50": 9,
+              "p95": 9,
+              "p99": 9,
+              "max": 9
+            },
+            "logicalSelectCount": {
+              "count": 500,
+              "mean": 4.96,
+              "p50": 5,
+              "p95": 5,
+              "p99": 5,
+              "max": 5
+            },
+            "promoteMillis": {
+              "count": 0
+            },
+            "promotePhysicalSqlCount": {
+              "count": 0
+            },
+            "promoteLogicalSelectCount": {
+              "count": 0
+            },
+            "promoteCandidateRows": {
+              "count": 0
+            }
+          },
+          "sqlStats": {
+            "ReservationOrderMapper.selectList": {
+              "calls": 500,
+              "totalMillis": 582.8826000000001,
+              "executionMillis": {
+                "count": 500,
+                "mean": 1.1658,
+                "p50": 0.8155,
+                "p95": 1.9097,
+                "p99": 6.063,
+                "max": 70.858199
+              }
+            },
+            "ResourceSlotMapper.tryConsumeFutureCapacity": {
+              "calls": 500,
+              "totalMillis": 58334.64939399998,
+              "executionMillis": {
+                "count": 500,
+                "mean": 116.6693,
+                "p50": 107.5642,
+                "p95": 148.1827,
+                "p99": 444.9964,
+                "max": 528.4625
+              }
+            },
+            "ResourceSlotMapper.selectById": {
+              "calls": 20,
+              "totalMillis": 67.561201,
+              "executionMillis": {
+                "count": 20,
+                "mean": 3.3781,
+                "p50": 1.5798,
+                "p95": 8.7677,
+                "p99": 19.9747,
+                "max": 19.9747
+              }
+            },
+            "ReservationOrderMapper.findReplayFresh": {
+              "calls": 500,
+              "totalMillis": 414.80699400000015,
+              "executionMillis": {
+                "count": 500,
+                "mean": 0.8296,
+                "p50": 0.6704,
+                "p95": 1.2886,
+                "p99": 4.2372,
+                "max": 15.680299
+              }
+            },
+            "ReservationOrderMapper.insert": {
+              "calls": 500,
+              "totalMillis": 784.131607,
+              "executionMillis": {
+                "count": 500,
+                "mean": 1.5683,
+                "p50": 1.2935,
+                "p95": 2.6111,
+                "p99": 5.2846,
+                "max": 30.6519
+              }
+            },
+            "ReservationOrderMapper.selectById": {
+              "calls": 500,
+              "totalMillis": 507.86150399999974,
+              "executionMillis": {
+                "count": 500,
+                "mean": 1.0157,
+                "p50": 0.7616,
+                "p95": 2.506,
+                "p99": 3.441,
+                "max": 32.606199
+              }
+            },
+            "ReservationOutboxEventMapper.insert": {
+              "calls": 500,
+              "totalMillis": 776.0861969999999,
+              "executionMillis": {
+                "count": 500,
+                "mean": 1.5522,
+                "p50": 1.0899,
+                "p95": 4.6589,
+                "p99": 7.0019,
+                "max": 19.240599
+              }
+            },
+            "ResourceSlotMapper.lockById": {
+              "calls": 480,
+              "totalMillis": 485.6818229999999,
+              "executionMillis": {
+                "count": 480,
+                "mean": 1.0118,
+                "p50": 0.9707,
+                "p95": 1.5332,
+                "p99": 1.8525,
+                "max": 3.6968
+              }
+            },
+            "ReservationWaitlistEntryMapper.insert": {
+              "calls": 480,
+              "totalMillis": 588.7924009999999,
+              "executionMillis": {
+                "count": 480,
+                "mean": 1.2267,
+                "p50": 1.0944,
+                "p95": 1.9357,
+                "p99": 4.359,
+                "max": 6.3791
+              }
+            },
+            "ReservationWaitlistEntryMapper.countWaitingPosition": {
+              "calls": 480,
+              "totalMillis": 477.6072160000002,
+              "executionMillis": {
+                "count": 480,
+                "mean": 0.995,
+                "p50": 0.8608,
+                "p95": 1.8363,
+                "p99": 3.1507,
+                "max": 4.283301
+              }
+            }
+          },
+          "state": {
+            "orders": 500,
+            "outbox": 500,
+            "roomBookings": 0,
+            "roomOverlaps": 0,
+            "waitingRooms": 0,
+            "waitingOrders": 480,
+            "confirmedRooms": 0,
+            "confirmedOrders": 20,
+            "negativeCapacity": 0
+          },
+          "maxObservedWaiters": 9,
+          "lockTables": [
+            "resource_slot/PRIMARY"
+          ],
+          "lockSamplerStatus": "available",
+          "seedSha256": "a98db70c5261764ba49c6c249872cfff955a72f55fb4050ac53beb546f1e7bba",
+          "requestSha256": "ed1e749ce4984d569eaa18e2f8e3da0a32081ede9b902e86c2ff75a12835ba49"
+        },
+        {
+          "label": "lecture-cap500-c500",
+          "requests": 500,
+          "concurrency": 500,
+          "seconds": 5.774046800000003,
+          "tps": 86.59437952598509,
+          "outcomes": {
+            "200:CONFIRMED": 500
+          },
+          "metrics": {
+            "clientMillis": {
+              "count": 500,
+              "mean": 3216.8606,
+              "p50": 3291.5507,
+              "p95": 5501.0565,
+              "p99": 5681.5469,
+              "max": 5709.544999999998
+            },
+            "serverMillis": {
+              "count": 500,
+              "mean": 1817.551,
+              "p50": 2026.1306,
+              "p95": 2359.4124,
+              "p99": 2461.9354,
+              "max": 2489.719199
+            },
+            "transactionToCommitMillis": {
+              "count": 500,
+              "mean": 1813.7259,
+              "p50": 2022.5295,
+              "p95": 2355.5952,
+              "p99": 2458.5999,
+              "max": 2484.751901
+            },
+            "acquiredLockToCommitMillis": {
+              "count": 500,
+              "mean": 10.7411,
+              "p50": 10.1717,
+              "p95": 14.5036,
+              "p99": 23.8906,
+              "max": 51.936
+            },
+            "lockSqlMillis": {
+              "count": 0
+            },
+            "connectionAcquireMillis": {
+              "count": 500,
+              "mean": 1704.7533,
+              "p50": 1927.4755,
+              "p95": 2254.3516,
+              "p99": 2357.5591,
+              "max": 2388.633699
+            },
+            "transactionBeginMillis": {
+              "count": 500,
+              "mean": 1706.9766,
+              "p50": 1929.2521,
+              "p95": 2255.8122,
+              "p99": 2359.035,
+              "max": 2390.5008
+            },
+            "commitMillis": {
+              "count": 500,
+              "mean": 2.2792,
+              "p50": 2.039,
+              "p95": 3.4741,
+              "p99": 7.1056,
+              "max": 20.412099
+            },
+            "requireRoomMillis": {
+              "count": 0
+            },
+            "physicalSqlCount": {
+              "count": 500,
+              "mean": 7,
+              "p50": 7,
+              "p95": 7,
+              "p99": 7,
+              "max": 7
+            },
+            "logicalSelectCount": {
+              "count": 500,
+              "mean": 4,
+              "p50": 4,
+              "p95": 4,
+              "p99": 4,
+              "max": 4
+            },
+            "promoteMillis": {
+              "count": 0
+            },
+            "promotePhysicalSqlCount": {
+              "count": 0
+            },
+            "promoteLogicalSelectCount": {
+              "count": 0
+            },
+            "promoteCandidateRows": {
+              "count": 0
+            }
+          },
+          "sqlStats": {
+            "ReservationOrderMapper.selectList": {
+              "calls": 500,
+              "totalMillis": 508.87959999999975,
+              "executionMillis": {
+                "count": 500,
+                "mean": 1.0178,
+                "p50": 0.8108,
+                "p95": 1.9924,
+                "p99": 4.536,
+                "max": 10.7966
+              }
+            },
+            "ResourceSlotMapper.tryConsumeFutureCapacity": {
+              "calls": 500,
+              "totalMillis": 46909.92777300002,
+              "executionMillis": {
+                "count": 500,
+                "mean": 93.8199,
+                "p50": 87.5144,
+                "p95": 113.6262,
+                "p99": 216.4458,
+                "max": 264.671999
+              }
+            },
+            "ResourceSlotMapper.selectById": {
+              "calls": 500,
+              "totalMillis": 594.4328949999997,
+              "executionMillis": {
+                "count": 500,
+                "mean": 1.1889,
+                "p50": 1.0626,
+                "p95": 2.001,
+                "p99": 3.7113,
+                "max": 5.5698
+              }
+            },
+            "ReservationOrderMapper.findReplayFresh": {
+              "calls": 500,
+              "totalMillis": 425.275025,
+              "executionMillis": {
+                "count": 500,
+                "mean": 0.8506,
+                "p50": 0.7187,
+                "p95": 1.5802,
+                "p99": 2.8301,
+                "max": 7.8463
+              }
+            },
+            "ReservationOrderMapper.insert": {
+              "calls": 500,
+              "totalMillis": 754.5672090000006,
+              "executionMillis": {
+                "count": 500,
+                "mean": 1.5091,
+                "p50": 1.4134,
+                "p95": 2.2405,
+                "p99": 3.8504,
+                "max": 8.1621
+              }
+            },
+            "ReservationOrderMapper.selectById": {
+              "calls": 500,
+              "totalMillis": 467.623505,
+              "executionMillis": {
+                "count": 500,
+                "mean": 0.9352,
+                "p50": 0.8299,
+                "p95": 1.6119,
+                "p99": 3.2048,
+                "max": 8.9572
+              }
+            },
+            "ReservationOutboxEventMapper.insert": {
+              "calls": 500,
+              "totalMillis": 800.6886950000005,
+              "executionMillis": {
+                "count": 500,
+                "mean": 1.6014,
+                "p50": 1.2928,
+                "p95": 3.6821,
+                "p99": 5.4105,
+                "max": 9.671001
+              }
+            }
+          },
+          "state": {
+            "orders": 500,
+            "outbox": 500,
+            "roomBookings": 0,
+            "roomOverlaps": 0,
+            "waitingRooms": 0,
+            "waitingOrders": 0,
+            "confirmedRooms": 0,
+            "confirmedOrders": 500,
+            "negativeCapacity": 0
+          },
+          "maxObservedWaiters": 9,
+          "lockTables": [
+            "resource_slot/PRIMARY"
+          ],
+          "lockSamplerStatus": "available",
+          "seedSha256": "b00d8b0f4fffa95c7b6a704afd490435cde2b067626c12ede83b86f3d7b501a8",
+          "requestSha256": "ed1e749ce4984d569eaa18e2f8e3da0a32081ede9b902e86c2ff75a12835ba49"
+        }
+      ]
+    }
+  ],
+  "pair": [
+    {
+      "label": "lecture-cap20-c500",
+      "baselineSeconds": 8.757792399999998,
+      "optimizedSeconds": 7.050146700000001,
+      "baselineTps": 57.09201327951096,
+      "optimizedTps": 70.92051006541466,
+      "baselineP95": 8399.2511,
+      "optimizedP95": 6692.6501,
+      "baselineP99": 8629.6018,
+      "optimizedP99": 6937.2784,
+      "baselineMeanSql": 10.92,
+      "optimizedMeanSql": 8.92,
+      "elapsedReductionPercent": 19.49858619621992
+    },
+    {
+      "label": "lecture-cap500-c500",
+      "baselineSeconds": 6.4659124000000014,
+      "optimizedSeconds": 5.774046800000003,
+      "baselineTps": 77.32860717383055,
+      "optimizedTps": 86.59437952598509,
+      "baselineP95": 6124.6043,
+      "optimizedP95": 5501.0565,
+      "baselineP99": 6349.4694,
+      "optimizedP99": 5681.5469,
+      "baselineMeanSql": 9,
+      "optimizedMeanSql": 7,
+      "elapsedReductionPercent": 10.700200639897286
+    }
+  ],
+  "excluded": [
+    {
+      "artifact": "target/booking-audit-4322a84d7f81",
+      "reason": "Baseline Gateway connection refused; 472/500 audit samples."
+    },
+    {
+      "artifact": "target/booking-audit-1dc0070f6e52",
+      "reason": "Baseline Gateway connection refused; 499/500 audit samples."
+    },
+    {
+      "artifact": "target/booking-audit-89ffd51d997e",
+      "reason": "Copied older timestamps caused Maven to reuse baseline classes. Excluded from optimized performance; forced recompilation in final run."
+    }
+  ],
+  "limitations": [
+    "One adjacent comparison is not a production capacity claim or a stable speedup guarantee.",
+    "UPDATE still holds the same slot row lock until transaction commit; sold-out requests retain explicit lock coordination.",
+    "RabbitMQ delivery was disabled; Outbox rows and transaction rollback were checked, not live broker delivery.",
+    "Previously observed study-room maintenance notification issue remains outside this lecture-only change."
+  ]
+}

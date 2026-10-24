@@ -66,20 +66,26 @@ public class ReservationServiceImpl implements ReservationService {
         // the replay lookup above has already read MySQL.
         reservationAdmissionGuard.requireAdmission(slotId, requesterReference);
 
-        // The same slot row lock still excludes maintenance and other mutations.
-        ResourceSlotEntity slot = resourceSlotMapper.lockById(slotId);
-        // READ_COMMITTED plus an uncached re-read observes the winner after waiting for the slot.
+        // A successful UPDATE already holds the slot write lock until commit.
+        // Failed claims must still serialize with cancellation/promotion and maintenance
+        // before interpreting the current slot or inserting a waitlist entry.
+        boolean confirmed = resourceSlotMapper.tryConsumeFutureCapacity(slotId, now()) == 1;
+        ResourceSlotEntity slot = confirmed ? resourceSlotMapper.selectById(slotId)
+                : resourceSlotMapper.lockById(slotId);
+        // Observe a concurrent winner after waiting for either the UPDATE or fallback lock.
         replay = reservationOrderMapper.findReplayFresh(requesterReference, idempotencyKey);
-        if (replay != null) { return toResponse(replay); }
+        if (replay != null) {
+            if (confirmed) {
+                requireChanged(resourceSlotMapper.releaseCapacity(slotId), "reservation-replay-capacity-release-failed");
+            }
+            return toResponse(replay);
+        }
         requireBookableOpenSlot(slot);
-        ReservationOrderEntity activeReservation = reservationOrderMapper.selectOne(
-                new LambdaQueryWrapper<ReservationOrderEntity>()
-                        .eq(ReservationOrderEntity::getSlotId, slotId)
-                        .eq(ReservationOrderEntity::getRequesterReference, requesterReference)
-                        .eq(ReservationOrderEntity::getActiveMarker, 1)
-        );
-        if (activeReservation != null) {
-            throw conflict("active-reservation-exists");
+        // A cancellation may have released capacity between the failed UPDATE and
+        // our fallback lock. Recheck under that lock instead of needlessly waiting.
+        if (!confirmed && slot.getAvailableCapacity() > 0) {
+            requireChanged(resourceSlotMapper.tryConsumeFutureCapacity(slotId, now()), "reservation-capacity-claim-failed");
+            confirmed = true;
         }
 
         ReservationOrderEntity reservation = new ReservationOrderEntity();
@@ -87,29 +93,31 @@ public class ReservationServiceImpl implements ReservationService {
         reservation.setSlotId(slot.getId());
         reservation.setRequesterReference(requesterReference);
         reservation.setIdempotencyKey(idempotencyKey);
-        reservation.setStatus(ReservationStatus.PENDING);
+        reservation.setStatus(confirmed ? ReservationStatus.CONFIRMED : ReservationStatus.WAITLISTED);
         reservation.setActiveMarker(1);
         reservation.setVersion(0);
         try {
-            reservationOrderMapper.insert(reservation);
+            // Unique constraints arbitrate duplicate keys and duplicate active bookings.
+            // A conflicting new booking rolls back the capacity claim with this transaction.
+            requireChanged(reservationOrderMapper.insert(reservation), "reservation-create-failed");
         } catch (DuplicateKeyException exception) {
             ReservationOrderEntity existing = reservationOrderMapper.findReplayFresh(requesterReference, idempotencyKey);
             if (existing != null) {
+                if (confirmed) {
+                    requireChanged(resourceSlotMapper.releaseCapacity(slotId), "reservation-replay-capacity-release-failed");
+                }
                 return toResponse(existing);
             }
             throw conflict("active-reservation-exists");
         }
 
-        if (resourceSlotMapper.tryConsumeCapacity(slotId) == 1) {
-            requireChanged(reservationOrderMapper.markConfirmed(reservation.getId()), "reservation-confirm-failed");
-        } else {
-            requireChanged(reservationOrderMapper.markWaitlisted(reservation.getId()), "reservation-waitlist-failed");
+        if (!confirmed) {
             ReservationWaitlistEntryEntity entry = new ReservationWaitlistEntryEntity();
             entry.setReservationId(reservation.getId());
             entry.setSlotId(slotId);
             entry.setRequesterReference(requesterReference);
             entry.setStatus(WaitlistStatus.WAITING);
-            waitlistEntryMapper.insert(entry);
+            requireChanged(waitlistEntryMapper.insert(entry), "reservation-waitlist-create-failed");
         }
         ReservationOrderEntity completed = requireReservation(reservation.getId());
         outboxService.recordStatusChanged(

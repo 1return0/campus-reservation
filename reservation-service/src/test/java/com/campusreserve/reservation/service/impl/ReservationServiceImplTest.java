@@ -54,7 +54,7 @@ class ReservationServiceImplTest {
 
         when(orderMapper.selectOne(ArgumentMatchers.<LambdaQueryWrapper<ReservationOrderEntity>>any()))
                 .thenReturn(null);
-        when(slotMapper.lockById(11L)).thenReturn(slot);
+        when(slotMapper.selectById(11L)).thenReturn(slot);
         doAnswer(invocation -> {
             ReservationOrderEntity order = invocation.getArgument(0);
             order.setId(101L);
@@ -62,17 +62,15 @@ class ReservationServiceImplTest {
             copy(order, inserted);
             return 1;
         }).when(orderMapper).insert(ArgumentMatchers.any(ReservationOrderEntity.class));
-        when(slotMapper.tryConsumeCapacity(11L)).thenReturn(1);
-        doAnswer(invocation -> {
-            inserted.setStatus(ReservationStatus.CONFIRMED);
-            return 1;
-        }).when(orderMapper).markConfirmed(101L);
+        when(slotMapper.tryConsumeFutureCapacity(ArgumentMatchers.eq(11L), ArgumentMatchers.any())).thenReturn(1);
         when(orderMapper.selectById(101L)).thenReturn(inserted);
 
         ReservationResponse response = service.reserve(11L, "student-1001", "reserve-1001");
 
         assertThat(response.status()).isEqualTo(ReservationStatus.CONFIRMED);
         assertThat(response.slotId()).isEqualTo(11L);
+        verify(slotMapper, times(0)).lockById(11L);
+        verify(orderMapper, times(0)).markConfirmed(101L);
     }
 
     @Test
@@ -98,17 +96,15 @@ class ReservationServiceImplTest {
             copy(order, inserted);
             return 1;
         }).when(orderMapper).insert(ArgumentMatchers.any(ReservationOrderEntity.class));
-        when(slotMapper.tryConsumeCapacity(12L)).thenReturn(0);
-        doAnswer(invocation -> {
-            inserted.setStatus(ReservationStatus.WAITLISTED);
-            return 1;
-        }).when(orderMapper).markWaitlisted(201L);
         when(orderMapper.selectById(201L)).thenReturn(inserted);
         when(waitlistMapper.insert(ArgumentMatchers.any(ReservationWaitlistEntryEntity.class))).thenReturn(1);
 
         ReservationResponse response = service.reserve(12L, "student-1002", "reserve-1002");
 
         assertThat(response.status()).isEqualTo(ReservationStatus.WAITLISTED);
+        verify(slotMapper).lockById(12L);
+        verify(slotMapper, times(1)).tryConsumeFutureCapacity(ArgumentMatchers.eq(12L), ArgumentMatchers.any());
+        verify(orderMapper, times(0)).markWaitlisted(201L);
     }
 
     @Test

@@ -49,6 +49,10 @@ public class AuditSqlInterceptor implements Interceptor {
             if (name.equals("ResourceSlotMapper.lockById") || name.equals("ReservableResourceMapper.lockById")) {
                 sample.lockAcquired = System.nanoTime();
             }
+            if (name.equals("ResourceSlotMapper.tryConsumeFutureCapacity")
+                    && result instanceof Number count && count.intValue() == 1) {
+                sample.lockAcquired = System.nanoTime();
+            }
             return result;
         } finally {
             timing.calls++;
